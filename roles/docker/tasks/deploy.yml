@@ -1,0 +1,130 @@
+---
+- name: Create project directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create project data directories
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}/{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0750') }}"
+  loop: "{{ project.data_directories | default([]) }}"
+
+- name: Ensure project PostgreSQL database exists
+  ansible.builtin.shell:
+    cmd: |
+      password=$(cat {{ compose_root }}/secrets/{{ project.database.password_secret }})
+      if docker exec -e PGPASSWORD="$password" {{ project.database.service }} psql -U {{ project.database.user }} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ project.database.name }}'" | grep -q 1; then
+        exit 0
+      fi
+      docker exec -e PGPASSWORD="$password" {{ project.database.service }} psql -U {{ project.database.user }} -d postgres -c "CREATE DATABASE {{ project.database.name }}"
+      echo changed
+  register: project_database
+  changed_when: project_database.stdout == 'changed'
+  no_log: true
+  when: project.database is defined
+
+- name: Write static Compose configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../compose/{{ project.name }}/compose.yml"
+    dest: "{{ compose_root }}/{{ project.name }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  when: not (project.compose_template | default(false))
+  register: static_compose_configuration
+
+- name: Write templated Compose configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../compose/{{ project.name }}/compose.yml.j2"
+    dest: "{{ compose_root }}/{{ project.name }}/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  when: project.compose_template | default(false)
+  register: templated_compose_configuration
+
+- name: Create project configuration directories
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}/{{ item | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop: "{{ project.files | default([]) }}"
+  when: (item | dirname | length) > 0
+
+- name: Write project configuration
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../compose/{{ project.name }}/{{ item }}"
+    dest: "{{ compose_root }}/{{ project.name }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ project.files | default([]) }}"
+  register: project_configuration
+
+- name: Record project configuration state
+  ansible.builtin.set_fact:
+    project_configuration_changed: >-
+      {{
+        (static_compose_configuration.changed | default(false))
+        or (templated_compose_configuration.changed | default(false))
+        or (project_configuration.changed | default(false))
+      }}
+
+- name: Validate Compose configuration
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ compose_root }}/{{ project.name }}"
+      - config
+      - --quiet
+  changed_when: false
+
+- name: Read expected services
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ compose_root }}/{{ project.name }}"
+      - config
+      - --services
+  register: expected_services
+  changed_when: false
+
+- name: Read running services
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ compose_root }}/{{ project.name }}"
+      - ps
+      - --status
+      - running
+      - --services
+  register: running_services
+  changed_when: false
+
+- name: Apply Compose project
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          'docker', 'compose',
+          '--project-directory', compose_root ~ '/' ~ project.name,
+          'up', '--detach', '--remove-orphans', '--wait'
+        ]
+        + (['--force-recreate'] if project_configuration_changed else [])
+      }}
+  when: project_configuration_changed or expected_services.stdout_lines | difference(running_services.stdout_lines) | length > 0

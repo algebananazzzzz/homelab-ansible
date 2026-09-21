@@ -1,0 +1,32 @@
+---
+- name: Check host identity
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.hostname == host_expected_hostname
+      - ansible_facts.distribution == "Debian"
+      - ansible_facts.distribution_major_version == "12"
+    fail_msg: Refusing to manage an unexpected host.
+
+- name: Read LAN address
+  ansible.builtin.command:
+    argv: [ip, -4, -o, address, show, dev, "{{ host_uplink_interface }}"]
+  register: lan_address
+  changed_when: false
+  check_mode: false
+
+- name: Check LAN address
+  ansible.builtin.assert:
+    that:
+      - host_lan_address in lan_address.stdout
+    fail_msg: "Expected {{ host_lan_address }} on {{ host_uplink_interface }}."
+
+- name: Check required tools
+  ansible.builtin.command:
+    argv:
+      - "{{ item }}"
+      - --version
+  loop:
+    - docker
+    - virsh
+  changed_when: false
+  check_mode: false

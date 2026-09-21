@@ -1,0 +1,25 @@
+name: traefik
+
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v3.7.13
+    command:
+      - --api.dashboard=true
+      - --ping=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --providers.consulcatalog.endpoint.address=127.0.0.1:8500
+      - --providers.consulcatalog.exposedbydefault=false
+      - --providers.consulcatalog.watch=true
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.watch=true
+    network_mode: host
+    volumes:
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped

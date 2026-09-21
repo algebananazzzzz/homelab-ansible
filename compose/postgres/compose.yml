@@ -1,0 +1,30 @@
+name: postgres
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:18
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    ports:
+      - "5432:5432/tcp"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    secrets:
+      - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+secrets:
+  postgres_password:
+    file: ../secrets/postgres_password
+
+volumes:
+  postgres-data:
+    name: homelab-postgres-data

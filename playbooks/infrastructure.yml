@@ -1,0 +1,13 @@
+---
+- name: Configure homelab infrastructure
+  hosts: hypervisors
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: host
+      tags:
+        - host
+    - role: network
+      tags:
+        - network

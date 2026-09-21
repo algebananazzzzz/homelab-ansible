@@ -1,0 +1,42 @@
+---
+- name: Discover dynamic service VM addresses
+  hosts: hypervisors
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Read dynamic service VM leases
+      ansible.builtin.command:
+        argv:
+          - virsh
+          - net-dhcp-leases
+          - "{{ hostvars[item].vm_network }}"
+          - --mac
+          - "{{ hostvars[item].vm_mac }}"
+      loop: "{{ groups['service_vms'] }}"
+      when: hostvars[item].ansible_host is not defined
+      register: dynamic_service_vm_leases
+      changed_when: false
+
+    - name: Add dynamic service VMs to the current run
+      ansible.builtin.add_host:
+        name: "{{ item.item }}"
+        ansible_host: "{{ item.stdout | regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})/[0-9]+') | first }}"
+      loop: "{{ dynamic_service_vm_leases.results }}"
+      when: not (item.skipped | default(false))
+      changed_when: false
+
+- name: Deploy Docker Compose projects
+  hosts: docker_hosts
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: Configure service VM DNS
+      ansible.builtin.include_role:
+        name: network
+        tasks_from: client_dns
+      when: network_dns_server is defined
+
+  roles:
+    - docker

@@ -1,0 +1,36 @@
+---
+vms:
+  - name: mgmt-01
+    network: br-mgmt
+    mac: "52:54:00:10:00:10"
+    address: 10.10.10.10
+    memory_mb: 2048
+    vcpus: 2
+    disk_gb: 20
+  - name: svc-proxy-01
+    network: br-svc
+    mac: "52:54:00:20:00:10"
+    address: 10.10.20.10
+    memory_mb: 2048
+    vcpus: 2
+    disk_gb: 20
+    docker: true
+  - name: svc-01
+    network: br-svc
+    mac: "52:54:00:20:00:11"
+    memory_mb: 4096
+    vcpus: 2
+    disk_gb: 40
+    docker: true
+  - name: svc-02
+    network: br-svc
+    mac: "52:54:00:20:00:12"
+    memory_mb: 4096
+    vcpus: 2
+    disk_gb: 40
+  - name: lab-01
+    network: br-lab
+    mac: "52:54:00:30:00:10"
+    memory_mb: 2048
+    vcpus: 2
+    disk_gb: 20

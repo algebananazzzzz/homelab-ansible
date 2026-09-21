@@ -1,0 +1,33 @@
+name: consul
+
+services:
+  consul:
+    container_name: consul
+    image: hashicorp/consul:1.21.3
+    command:
+      - agent
+      - -server
+      - -bootstrap-expect=1
+      - -node=svc-proxy-01
+      - -client=0.0.0.0
+      - -advertise=10.10.20.10
+      - -dns-port=8600
+      - -recursor=10.10.20.1
+      - -ui
+      - -data-dir=/consul/data
+      - -config-dir=/consul/config
+    network_mode: host
+    volumes:
+      - consul-data:/consul/data
+      - ./config/glance.hcl:/consul/config/glance.hcl:ro
+      - ./config/prometheus.hcl:/consul/config/prometheus.hcl:ro
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  consul-data:
+    name: homelab-consul-data

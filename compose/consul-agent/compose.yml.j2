@@ -1,0 +1,35 @@
+name: consul-agent
+
+services:
+  consul-agent:
+    container_name: consul-agent
+    image: hashicorp/consul:1.21.3
+    command:
+      - agent
+      - -node={{ inventory_hostname }}
+      - -client=0.0.0.0
+      - -bind={{ ansible_host }}
+      - -retry-join=10.10.20.10
+      - -data-dir=/consul/data
+      - -config-dir=/consul/config
+    network_mode: host
+    volumes:
+      - ./config/postgres.hcl:/consul/config/postgres.hcl:ro
+      - ./config/redis.hcl:/consul/config/redis.hcl:ro
+      - ./config/docmost.hcl:/consul/config/docmost.hcl:ro
+      - ./config/kaneo.hcl:/consul/config/kaneo.hcl:ro
+      - ./config/mongo.hcl:/consul/config/mongo.hcl:ro
+      - ./config/stirling.hcl:/consul/config/stirling.hcl:ro
+      - ./config/beaverhabits.hcl:/consul/config/beaverhabits.hcl:ro
+      - ./config/excalidraw.hcl:/consul/config/excalidraw.hcl:ro
+      - consul-agent-data:/consul/data
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  consul-agent-data:
+    name: homelab-consul-agent-data

@@ -1,0 +1,17 @@
+name: prometheus
+
+services:
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v3.13.3
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.wal-compression
+    ports:
+      - "9090:9090/tcp"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data:/prometheus
+    restart: unless-stopped

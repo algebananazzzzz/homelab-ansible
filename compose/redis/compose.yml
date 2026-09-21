@@ -1,0 +1,30 @@
+name: redis
+
+services:
+  redis:
+    container_name: redis
+    image: redis:8
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --maxmemory-policy noeviction --requirepass "$$(cat /run/secrets/redis_password)"
+    ports:
+      - "6379:6379/tcp"
+    volumes:
+      - redis-data:/data
+    secrets:
+      - redis_password
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+secrets:
+  redis_password:
+    file: ../secrets/redis_password
+
+volumes:
+  redis-data:
+    name: homelab-redis-data

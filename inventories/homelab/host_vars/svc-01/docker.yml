@@ -1,0 +1,51 @@
+---
+compose_root: /opt/compose
+compose_projects:
+  - name: consul-agent
+    compose_template: true
+    files:
+      - config/postgres.hcl
+      - config/redis.hcl
+      - config/docmost.hcl
+      - config/kaneo.hcl
+      - config/mongo.hcl
+      - config/stirling.hcl
+      - config/beaverhabits.hcl
+      - config/excalidraw.hcl
+  - name: postgres
+    secrets:
+      - postgres_password
+  - name: redis
+    secrets:
+      - redis_password
+  - name: docmost
+    secrets:
+      - docmost_app_secret
+      - postgres_password
+      - redis_password
+    secret_environment:
+      DOCMOST_APP_SECRET: docmost_app_secret
+      POSTGRES_PASSWORD: postgres_password
+      REDIS_PASSWORD: redis_password
+  - name: kaneo
+    database:
+      name: kaneo
+      service: postgres
+      user: postgres
+      password_secret: postgres_password
+    secrets:
+      - kaneo_auth_secret
+      - postgres_password
+    secret_environment:
+      POSTGRES_PASSWORD: postgres_password
+      AUTH_SECRET: kaneo_auth_secret
+  - name: mongo
+  - name: stirling
+  - name: excalidraw
+  - name: beaverhabits
+    data_directories:
+      - path: data
+        owner: "65534"
+        group: "65534"
+        mode: "0750"
+  - name: cadvisor

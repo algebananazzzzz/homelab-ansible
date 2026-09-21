@@ -1,0 +1,10 @@
+---
+- name: Read Docker version
+  ansible.builtin.command:
+    argv: [docker, version, --format, "{{ '{{' }}.Server.Version{{ '}}' }}"]
+  changed_when: false
+
+- name: Read Docker Compose version
+  ansible.builtin.command:
+    argv: [docker, compose, version, --short]
+  changed_when: false

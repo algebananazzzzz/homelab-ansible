@@ -1,0 +1,38 @@
+---
+- name: Create nftables configuration directory
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install NAT rules
+  ansible.builtin.template:
+    src: nat.nft.j2
+    dest: /etc/nftables.d/homelab-router.nft
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/nft -c -f %s
+  register: nat_config
+
+- name: Install network service
+  ansible.builtin.template:
+    src: network.service.j2
+    dest: /etc/systemd/system/homelab-router.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: network_service
+
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: network_service.changed
+
+- name: Enable network service
+  ansible.builtin.systemd_service:
+    name: homelab-router.service
+    enabled: true
+    state: "{{ 'restarted' if nat_config.changed or network_service.changed else 'started' }}"

@@ -1,0 +1,13 @@
+name: glance
+
+services:
+  glance:
+    container_name: glance
+    image: glanceapp/glance:latest
+    environment:
+      TZ: Asia/Singapore
+    ports:
+      - "8090:8080/tcp"
+    volumes:
+      - ./config/glance.yml:/app/config/glance.yml:ro
+    restart: unless-stopped

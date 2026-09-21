@@ -1,0 +1,22 @@
+name: mongo
+
+services:
+  mongo:
+    container_name: mongo
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017/tcp"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Habitica needs transactions, which need a replica set even with one node.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (err) { rs.initiate().ok }"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+    name: homelab-mongo-data

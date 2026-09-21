@@ -1,0 +1,22 @@
+---
+compose_root: /opt/compose
+compose_projects:
+  - name: consul
+    files:
+      - config/glance.hcl
+      - config/prometheus.hcl
+  - name: traefik
+    files:
+      - dynamic.yml
+  - name: glance
+    files:
+      - config/glance.yml
+  - name: prometheus
+    files:
+      - config/prometheus.yml
+    data_directories:
+      - path: data
+        owner: "65534"
+        group: "65534"
+        mode: "0750"
+  - name: cadvisor

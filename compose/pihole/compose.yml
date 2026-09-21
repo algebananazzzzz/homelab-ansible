@@ -1,0 +1,20 @@
+name: pihole
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.07.2
+    ports:
+      - "192.168.50.39:53:53/tcp"
+      - "192.168.50.39:53:53/udp"
+      - "192.168.50.39:8053:80/tcp"
+      - "127.0.0.1:8053:80/tcp"
+    environment:
+      TZ: Asia/Singapore
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_misc_dnsmasq_lines: |-
+        address=/home.arpa/10.10.20.10
+        server=/consul/10.10.20.10#8600
+    volumes:
+      - ./data:/etc/pihole
+    restart: unless-stopped

@@ -1,0 +1,13 @@
+name: kaneo
+
+services:
+  kaneo:
+    container_name: kaneo
+    image: ghcr.io/usekaneo/kaneo:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres.service.consul:5432/kaneo
+      AUTH_SECRET: ${AUTH_SECRET}
+      KANEO_CLIENT_URL: http://kaneo.home.arpa
+    ports:
+      - "5173:5173/tcp"
+    restart: unless-stopped

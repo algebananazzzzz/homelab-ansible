@@ -1,0 +1,26 @@
+http:
+  routers:
+    traefik-dashboard:
+      entryPoints:
+        - web
+      rule: Host(`traefik.home.arpa`)
+      service: api@internal
+    consul-dashboard:
+      entryPoints:
+        - web
+      rule: Host(`consul.home.arpa`)
+      service: consul-dashboard
+    pihole-dashboard:
+      entryPoints:
+        - web
+      rule: Host(`pihole.home.arpa`)
+      service: pihole-dashboard
+  services:
+    consul-dashboard:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:8500
+    pihole-dashboard:
+      loadBalancer:
+        servers:
+          - url: http://192.168.50.39:8053

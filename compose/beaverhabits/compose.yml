@@ -1,0 +1,15 @@
+name: beaverhabits
+
+services:
+  beaverhabits:
+    container_name: beaverhabits
+    image: daya0576/beaverhabits:0.10.0
+    environment:
+      HABITS_STORAGE: USER_DISK
+      # Bypasses login: the session cookie is SameSite=Lax, so it never survives the Glance iframe.
+      TRUSTED_LOCAL_EMAIL: daniel.zhouqx@gmail.com
+    ports:
+      - "8082:8080/tcp"
+    volumes:
+      - ./data:/app/.user
+    restart: unless-stopped

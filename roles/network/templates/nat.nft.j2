@@ -1,0 +1,6 @@
+table ip homelab_nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        ip saddr {{ host_internal_cidr }} ip daddr != {{ host_home_cidr }} oifname "{{ host_uplink_interface }}" masquerade
+    }
+}

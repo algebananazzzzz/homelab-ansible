@@ -1,0 +1,45 @@
+---
+- name: Validate host
+  ansible.builtin.import_tasks: preflight.yml
+  tags:
+    - preflight
+
+- name: Create host SSH directory
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    owner: "{{ admin_user }}"
+    mode: "0700"
+
+- name: Create host SSH key
+  ansible.builtin.command:
+    argv:
+      - runuser
+      - -u
+      - "{{ admin_user }}"
+      - --
+      - ssh-keygen
+      - -q
+      - -t
+      - ed25519
+      - -N
+      - ""
+      - -f
+      - "/home/{{ admin_user }}/.ssh/id_ed25519"
+    creates: "/home/{{ admin_user }}/.ssh/id_ed25519"
+
+- name: Enable host time synchronization
+  ansible.builtin.systemd_service:
+    name: systemd-timesyncd.service
+    enabled: true
+    state: started
+
+- name: Wait for host time synchronization
+  ansible.builtin.command:
+    argv: [timedatectl, show, --property=NTPSynchronized, --value]
+  register: time_synchronized
+  changed_when: false
+  check_mode: false
+  until: time_synchronized.stdout == 'yes'
+  retries: 30
+  delay: 2

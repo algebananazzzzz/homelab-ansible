@@ -1,0 +1,194 @@
+---
+- name: Check VM manifest
+  ansible.builtin.assert:
+    that:
+      - vm.name is defined
+      - vm.network is defined
+      - vm.network in (networks | map(attribute='name') | list)
+      - vm.mac is defined
+      - vm.memory_mb is defined
+      - vm.vcpus is defined
+      - vm.disk_gb is defined
+    fail_msg: VM manifest is incomplete or references an unknown network.
+
+- name: Set VM paths
+  ansible.builtin.set_fact:
+    vm_directory: "{{ storage_root }}/{{ vm.name }}"
+    vm_disk: "{{ storage_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
+    vm_seed: "{{ storage_root }}/{{ vm.name }}/seed.iso"
+
+- name: Create VM directory
+  ansible.builtin.file:
+    path: "{{ vm_directory }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0770"
+
+- name: Create VM disk overlay
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - create
+      - -f
+      - qcow2
+      - -F
+      - qcow2
+      - -b
+      - "{{ base_image }}"
+      - "{{ vm_disk }}"
+      - "{{ vm.disk_gb }}G"
+    creates: "{{ vm_disk }}"
+
+- name: Set VM disk permissions
+  ansible.builtin.file:
+    path: "{{ vm_disk }}"
+    owner: libvirt-qemu
+    group: kvm
+    mode: "0660"
+
+- name: Write cloud-init user data
+  ansible.builtin.template:
+    src: user-data.j2
+    dest: "{{ vm_directory }}/user-data"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: user_data
+
+- name: Write cloud-init metadata
+  ansible.builtin.template:
+    src: meta-data.j2
+    dest: "{{ vm_directory }}/meta-data"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: meta_data
+
+- name: Write cloud-init network configuration
+  ansible.builtin.template:
+    src: network-config.j2
+    dest: "{{ vm_directory }}/network-config"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: network_config
+
+- name: Check cloud-init seed
+  ansible.builtin.stat:
+    path: "{{ vm_seed }}"
+  register: seed_image
+
+- name: Build cloud-init seed
+  ansible.builtin.command:
+    argv:
+      - genisoimage
+      - -output
+      - "{{ vm_seed }}"
+      - -volid
+      - cidata
+      - -joliet
+      - -rock
+      - "{{ vm_directory }}/user-data"
+      - "{{ vm_directory }}/meta-data"
+      - "{{ vm_directory }}/network-config"
+  when: user_data.changed or meta_data.changed or network_config.changed or not seed_image.stat.exists
+
+- name: Set cloud-init seed permissions
+  ansible.builtin.file:
+    path: "{{ vm_seed }}"
+    owner: root
+    group: kvm
+    mode: "0640"
+
+- name: Read VM status
+  ansible.builtin.command:
+    argv: [virsh, dominfo, "{{ vm.name }}"]
+  register: vm_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Define and start VM
+  ansible.builtin.command:
+    argv:
+      - virt-install
+      - --name
+      - "{{ vm.name }}"
+      - --memory
+      - "{{ vm.memory_mb }}"
+      - --vcpus
+      - "{{ vm.vcpus }}"
+      - --cpu
+      - host-passthrough
+      - --os-variant
+      - generic
+      - --import
+      - --disk
+      - "path={{ vm_disk }},bus=virtio,format=qcow2"
+      - --disk
+      - "path={{ vm_seed }},device=cdrom"
+      - --channel
+      - unix,target_type=virtio,name=org.qemu.guest_agent.0
+      - --network
+      - "network={{ vm.network }},model=virtio,mac={{ vm.mac }}"
+      - --graphics
+      - none
+      - --console
+      - pty,target_type=serial
+      - --noautoconsole
+  when: vm_status.rc != 0
+
+- name: Read updated VM status
+  ansible.builtin.command:
+    argv: [virsh, dominfo, "{{ vm.name }}"]
+  register: updated_vm_status
+  changed_when: false
+  check_mode: false
+
+- name: Enable VM at boot
+  ansible.builtin.command:
+    argv: [virsh, autostart, "{{ vm.name }}"]
+  when: updated_vm_status.stdout is not regex('(?m)^Autostart:\s+enable$')
+
+- name: Start existing VM
+  ansible.builtin.command:
+    argv: [virsh, start, "{{ vm.name }}"]
+  when: updated_vm_status.stdout is not regex('(?m)^State:\s+running$')
+
+- name: Use reserved VM address
+  ansible.builtin.set_fact:
+    vm_address: "{{ vm.address }}"
+  when: vm.address is defined
+
+- name: Wait for dynamic DHCP lease
+  ansible.builtin.command:
+    argv: [virsh, net-dhcp-leases, "{{ vm.network }}", "--mac", "{{ vm.mac }}"]
+  register: vm_dhcp_lease
+  changed_when: false
+  until: vm_dhcp_lease.stdout is regex('(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]+')
+  retries: 60
+  delay: 5
+  when: vm.address is not defined
+
+- name: Read dynamic VM address
+  ansible.builtin.set_fact:
+    vm_address: "{{ vm_dhcp_lease.stdout | regex_findall('((?:[0-9]{1,3}\\.){3}[0-9]{1,3})/[0-9]+') | first }}"
+  when: vm.address is not defined
+
+- name: Wait for VM SSH
+  ansible.builtin.wait_for:
+    host: "{{ vm_address }}"
+    port: 22
+    delay: 5
+    timeout: 300
+
+- name: Add VM to the current run
+  ansible.builtin.add_host:
+    name: "{{ vm.name }}"
+    groups:
+      - provisioned_vms
+      - service_vms
+      - docker_hosts
+    ansible_host: "{{ vm_address }}"
+  when: vm.docker | default(false)

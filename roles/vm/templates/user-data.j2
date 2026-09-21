@@ -1,0 +1,20 @@
+#cloud-config
+hostname: {{ vm.name }}
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: {{ admin_user }}
+    groups:
+      - sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - {{ vm_ssh_public_key }}
+      - {{ controller_ssh_public_key }}
+packages:
+  - git
+  - python3
+  - qemu-guest-agent
+runcmd:
+  - [systemctl, start, qemu-guest-agent]

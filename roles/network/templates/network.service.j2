@@ -1,0 +1,14 @@
+[Unit]
+Description=Homelab VM routing and outbound NAT
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=-/usr/sbin/nft delete table ip homelab_nat
+ExecStart=/usr/sbin/nft -f /etc/nftables.d/homelab-router.nft
+ExecStop=-/usr/sbin/nft delete table ip homelab_nat
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

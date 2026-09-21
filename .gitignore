@@ -1,0 +1,6 @@
+.ansible/
+.venv/
+.worktrees/
+*.retry
+vault-password*
+.obsidian/

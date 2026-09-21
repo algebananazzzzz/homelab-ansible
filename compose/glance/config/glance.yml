@@ -1,0 +1,189 @@
+server:
+  proxied: true
+
+theme:
+  background-color: 240 21 15
+  contrast-multiplier: 1.2
+  primary-color: 217 92 83
+  positive-color: 115 54 76
+  negative-color: 347 70 65
+  presets:
+    catppuccin-latte:
+      light: true
+      background-color: 220 23 95
+      contrast-multiplier: 1.0
+      primary-color: 220 91 54
+      positive-color: 109 58 40
+      negative-color: 347 87 44
+
+pages:
+  - name: Home
+    columns:
+      - size: small
+        widgets:
+          - type: clock
+            hour-format: 24h
+            timezones:
+              - timezone: Asia/Singapore
+                label: Singapore
+          - type: calendar
+            first-day-of-week: monday
+          - type: weather
+            location: Singapore, Singapore
+            units: metric
+            hour-format: 24h
+
+          - type: custom-api
+            title: Habits
+            cache: 1m
+            url: http://beaverhabits.home.arpa/api/v1/habits/export
+            template: |
+              <div style="display: grid; grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr)); gap: .5rem .25rem; align-items: center; text-align: center;">
+                <span></span>
+                {{ range $i := 5 }}
+                  {{ $day := offsetNow (printf "-%dh" (mul (sub 4 $i) 24)) }}
+                  <span class="color-subdue size-h6">{{ $day.Format "Mon" }}<br>{{ $day.Format "2" }}</span>
+                {{ end }}
+                {{ range .JSON.Array "habits" }}
+                  {{ if eq (.String "status") "" }}
+                    {{ $records := .Array "records" }}
+                    <span style="text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ .String "name" }}</span>
+                    {{ range $i := 5 }}
+                      {{ $date := (offsetNow (printf "-%dh" (mul (sub 4 $i) 24))).Format "2006-01-02" }}
+                      {{ $done := false }}
+                      {{ range $records }}
+                        {{ if and (eq (.String "day") $date) (.Bool "done") }}{{ $done = true }}{{ end }}
+                      {{ end }}
+                      <span class="{{ if $done }}color-primary{{ else }}color-subdue{{ end }}">{{ if $done }}✓{{ else }}·{{ end }}</span>
+                    {{ end }}
+                  {{ end }}
+                {{ end }}
+              </div>
+
+      - size: full
+        widgets:
+          - type: monitor
+            title: Services
+            cache: 30s
+            sites:
+              - title: Kaneo
+                url: http://kaneo.home.arpa
+                icon: http://kaneo.home.arpa/favicon.ico
+              - title: Docmost
+                url: http://docmost.home.arpa
+                icon: si:bookstack
+              - title: Beaver Habits
+                url: http://beaverhabits.home.arpa
+                icon: si:todoist
+              - title: Stirling PDF
+                url: http://stirling.home.arpa
+                icon: si:adobeacrobatreader
+              - title: Excalidraw
+                url: http://excalidraw.home.arpa
+                icon: si:excalidraw
+
+          - type: monitor
+            title: Media
+            cache: 30s
+            sites:
+              - title: Jellyfin
+                url: http://100.116.110.63:8096/web
+                check-url: http://192.168.50.39:8096/web
+                icon: si:jellyfin
+              - title: Radarr
+                url: http://100.116.110.63:7878/radarr/
+                check-url: http://192.168.50.39:7878/radarr/
+                icon: si:radarr
+              - title: Sonarr
+                url: http://100.116.110.63:8989/sonarr/
+                check-url: http://192.168.50.39:8989/sonarr/
+                icon: si:sonarr
+
+          - type: monitor
+            title: Management
+            cache: 30s
+            sites:
+              - title: Pi-hole
+                url: http://pihole.home.arpa/admin/
+                icon: si:pihole
+              - title: Traefik
+                url: http://traefik.home.arpa/dashboard/
+                icon: si:traefikproxy
+              - title: Consul
+                url: http://consul.home.arpa/ui/
+                icon: si:consul
+              - title: Prometheus
+                url: http://prometheus.home.arpa
+                icon: si:prometheus
+              - title: UGOS
+                url: https://100.116.110.63:9443/
+                icon: si:ubiquiti
+                allow-insecure: true
+
+          - type: custom-api
+            title: Nodes
+            cache: 30s
+            url: http://prometheus.home.arpa/api/v1/query
+            parameters:
+              query: up{job="node"}
+            template: |
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+              {{ range .JSON.Array "data.result" }}
+                {{ $host := .String "metric.instance_name" }}
+                <div>
+                  <p class="size-h4 color-highlight">{{ $host }}</p>
+                  {{ if eq (.String "value.1") "0" }}
+                    <p class="color-negative">Node exporter unavailable</p>
+                  {{ else }}
+                    {{ $cpuQuery := concat "100 * (1 - avg by (instance_name) (rate(node_cpu_seconds_total{job=\"node\",instance_name=\"" $host "\",mode=\"idle\"}[5m])))" }}
+                    {{ $memoryQuery := concat "100 * (1 - node_memory_MemAvailable_bytes{job=\"node\",instance_name=\"" $host "\"} / node_memory_MemTotal_bytes{job=\"node\",instance_name=\"" $host "\"})" }}
+                    {{ $diskQuery := concat "100 * (1 - node_filesystem_avail_bytes{job=\"node\",instance_name=\"" $host "\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node\",instance_name=\"" $host "\",mountpoint=\"/\"})" }}
+                    {{ $cpu := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $cpuQuery | getResponse }}
+                    {{ $memory := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $memoryQuery | getResponse }}
+                    {{ $disk := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $diskQuery | getResponse }}
+                    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem;">
+                      <p>CPU<br><span class="size-h4">{{ printf "%.1f" ($cpu.JSON.Float "data.result.0.value.1") }}%</span></p>
+                      <p>Memory<br><span class="size-h4">{{ printf "%.1f" ($memory.JSON.Float "data.result.0.value.1") }}%</span></p>
+                      <p>Disk<br><span class="size-h4">{{ printf "%.1f" ($disk.JSON.Float "data.result.0.value.1") }}%</span></p>
+                    </div>
+                  {{ end }}
+                </div>
+              {{ end }}
+              </div>
+
+  - name: Monitoring
+    columns:
+      - size: full
+        widgets:
+          - type: custom-api
+            title: Containers by node
+            cache: 30s
+            url: http://prometheus.home.arpa/api/v1/query
+            parameters:
+              query: up{job="node"}
+            template: |
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+              {{ range .JSON.Array "data.result" }}
+                {{ $host := .String "metric.instance_name" }}
+                <div>
+                  <p class="size-h4 color-highlight">{{ $host }}</p>
+                  {{ if eq (.String "value.1") "0" }}
+                    <p class="color-negative">Node exporter unavailable</p>
+                  {{ else }}
+                    {{ $containersQuery := concat "topk(20, sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",instance_name=\"" $host "\",name!=\"\",name!=\"cadvisor\"}[5m])) * 100)" }}
+                    {{ $containers := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $containersQuery | getResponse }}
+                    <div style="display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: .4rem;">
+                      <span class="color-subdue">Container</span><span class="color-subdue">CPU</span><span class="color-subdue">Mem</span><span class="color-subdue">Disk</span>
+                      {{ range $containers.JSON.Array "data.result" }}
+                        {{ $container := .String "metric.name" }}
+                        {{ $memoryQuery := concat "container_memory_working_set_bytes{job=\"cadvisor\",instance_name=\"" $host "\",name=\"" $container "\"} / 1024 / 1024" }}
+                        {{ $diskQuery := concat "container_fs_usage_bytes{job=\"cadvisor\",instance_name=\"" $host "\",name=\"" $container "\"} / 1024 / 1024" }}
+                        {{ $memory := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $memoryQuery | getResponse }}
+                        {{ $disk := newRequest "http://prometheus.home.arpa/api/v1/query" | withParameter "query" $diskQuery | getResponse }}
+                        <span>{{ $container }}</span><span>{{ printf "%.1f" (.Float "value.1") }}%</span><span>{{ printf "%.0f" ($memory.JSON.Float "data.result.0.value.1") }} MB</span><span>{{ printf "%.0f" ($disk.JSON.Float "data.result.0.value.1") }} MB</span>
+                      {{ end }}
+                    </div>
+                  {{ end }}
+                </div>
+              {{ end }}
+              </div>

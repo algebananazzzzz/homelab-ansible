@@ -1,0 +1,8 @@
+---
+- name: Configure management host
+  hosts: management
+  gather_facts: true
+  become: true
+
+  roles:
+    - management

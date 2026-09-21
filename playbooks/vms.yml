@@ -1,0 +1,61 @@
+---
+- import_playbook: infrastructure.yml
+
+- name: Create virtual machines
+  hosts: hypervisors
+  gather_facts: false
+  become: true
+
+  vars:
+    selected_vm_names: "{{ vm_names | default(vms | map(attribute='name') | list, true) }}"
+    selected_vms: "{{ vms | selectattr('name', 'in', selected_vm_names) | list }}"
+
+  pre_tasks:
+    - name: Check requested VM names
+      ansible.builtin.assert:
+        that:
+          - selected_vms | length == selected_vm_names | length
+        fail_msg: One or more requested VM names do not exist in vms.
+      tags:
+        - always
+
+  roles:
+    - role: vm
+      tags:
+        - vm
+
+- name: Configure provisioned Docker VMs
+  hosts: provisioned_vms
+  gather_facts: false
+  become: true
+
+  pre_tasks:
+    - name: Trust newly provisioned VM host key
+      ansible.builtin.command:
+        argv:
+          - ssh
+          - -o
+          - BatchMode=yes
+          - -o
+          - StrictHostKeyChecking=accept-new
+          - -o
+          - >-
+            ProxyCommand=ssh -p {{ hostvars['host'].ansible_port }}
+            {{ admin_user }}@{{ hostvars['host'].ansible_host }} nc %h %p
+          - "{{ admin_user }}@{{ ansible_host }}"
+          - "true"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Gather provisioned VM facts
+      ansible.builtin.setup:
+
+    - name: Configure service VM DNS
+      ansible.builtin.include_role:
+        name: network
+        tasks_from: client_dns
+      when: network_dns_server is defined
+
+  roles:
+    - docker

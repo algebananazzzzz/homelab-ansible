@@ -1,0 +1,15 @@
+---
+- name: Prepare shared image
+  ansible.builtin.import_tasks: image.yml
+  tags:
+    - image
+    - instances
+
+- name: Create VMs
+  ansible.builtin.include_tasks: instance.yml
+  loop: "{{ selected_vms }}"
+  loop_control:
+    loop_var: vm
+    label: "{{ vm.name }}"
+  tags:
+    - instances

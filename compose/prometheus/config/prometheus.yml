@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: [192.168.50.39:9100]
+        labels: {instance_name: host}
+      - targets: [10.10.10.10:9100]
+        labels: {instance_name: mgmt-01}
+      - targets: [10.10.20.10:9100]
+        labels: {instance_name: svc-proxy-01}
+      - targets: [10.10.20.111:9100]
+        labels: {instance_name: svc-01}
+      - targets: [10.10.20.12:9100]
+        labels: {instance_name: svc-02}
+      - targets: [10.10.30.10:9100]
+        labels: {instance_name: lab-01}
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [192.168.50.39:8081]
+        labels: {instance_name: host}
+      - targets: [10.10.20.10:8081]
+        labels: {instance_name: svc-proxy-01}
+      - targets: [10.10.20.111:8081]
+        labels: {instance_name: svc-01}

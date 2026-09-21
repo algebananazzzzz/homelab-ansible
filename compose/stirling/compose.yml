@@ -1,0 +1,22 @@
+name: stirling
+
+services:
+  stirling:
+    container_name: stirling
+    image: stirlingtools/stirling-pdf:2.14.3
+    environment:
+      TZ: Asia/Singapore
+      # Stirling 2.x enables login with a default admin account, and settings.yml in the volume keeps that.
+      SECURITY_ENABLELOGIN: "false"
+    ports:
+      - "8080:8080/tcp"
+    volumes:
+      - stirling-config:/configs
+      - stirling-tessdata:/usr/share/tessdata
+    restart: unless-stopped
+
+volumes:
+  stirling-config:
+    name: homelab-stirling-config
+  stirling-tessdata:
+    name: homelab-stirling-tessdata
