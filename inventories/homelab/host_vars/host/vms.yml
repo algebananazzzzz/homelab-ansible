@@ -7,6 +7,7 @@ vms:
     memory_mb: 2048
     vcpus: 2
     disk_gb: 20
+    docker: true
   - name: svc-proxy-01
     network: br-svc
     mac: "52:54:00:20:00:10"
