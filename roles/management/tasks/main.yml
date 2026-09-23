@@ -40,30 +40,21 @@
 - name: Install management packages
   ansible.builtin.apt:
     name:
-      - dnsmasq
       - git
       - tailscale
     state: present
 
-- name: Configure tailnet DNS relay
-  ansible.builtin.copy:
-    dest: /etc/dnsmasq.d/homelab.conf
-    content: |
-      bind-interfaces
-      listen-address=10.10.10.10
-      no-resolv
-      server=192.168.50.39
-      cache-size=0
-    owner: root
-    group: root
-    mode: "0644"
-  register: dnsmasq_configuration
+- name: Remove tailnet DNS relay
+  ansible.builtin.apt:
+    name: dnsmasq
+    state: absent
+    purge: true
+    autoremove: true
 
-- name: Enable tailnet DNS relay
-  ansible.builtin.systemd_service:
-    name: dnsmasq.service
-    enabled: true
-    state: "{{ 'restarted' if dnsmasq_configuration.changed else 'started' }}"
+- name: Remove tailnet DNS relay configuration
+  ansible.builtin.file:
+    path: /etc/dnsmasq.d/homelab.conf
+    state: absent
 
 - name: Enable Tailscale service
   ansible.builtin.systemd_service:

@@ -2,5 +2,4 @@
 compose_root: /opt/compose
 compose_projects:
   - name: pihole
-    compose_template: true
   - name: cadvisor

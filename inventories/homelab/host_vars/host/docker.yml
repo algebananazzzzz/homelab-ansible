@@ -1,5 +1,4 @@
 ---
 compose_root: /volume1/docker/homelab
 compose_projects:
-  - name: pihole
   - name: cadvisor

@@ -3,18 +3,24 @@ http:
     traefik-dashboard:
       entryPoints:
         - web
-      rule: Host(`traefik.home.arpa`)
+        - websecure
+      rule: Host(`traefik.ops.home.arpa`)
       service: api@internal
+      tls: {}
     consul-dashboard:
       entryPoints:
         - web
-      rule: Host(`consul.home.arpa`)
+        - websecure
+      rule: Host(`consul.ops.home.arpa`)
       service: consul-dashboard
+      tls: {}
     pihole-dashboard:
       entryPoints:
         - web
-      rule: Host(`pihole.home.arpa`)
+        - websecure
+      rule: Host(`pihole.ops.home.arpa`)
       service: pihole-dashboard
+      tls: {}
   services:
     consul-dashboard:
       loadBalancer:
@@ -23,4 +29,14 @@ http:
     pihole-dashboard:
       loadBalancer:
         servers:
-          - url: http://192.168.50.39:8053
+          - url: http://10.10.10.10:8080
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/server.crt
+      keyFile: /etc/traefik/certs/server.key
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/server.crt
+        keyFile: /etc/traefik/certs/server.key
