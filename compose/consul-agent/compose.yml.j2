@@ -14,14 +14,9 @@ services:
       - -config-dir=/consul/config
     network_mode: host
     volumes:
-      - ./config/postgres.hcl:/consul/config/postgres.hcl:ro
-      - ./config/redis.hcl:/consul/config/redis.hcl:ro
-      - ./config/docmost.hcl:/consul/config/docmost.hcl:ro
-      - ./config/kaneo.hcl:/consul/config/kaneo.hcl:ro
-      - ./config/mongo.hcl:/consul/config/mongo.hcl:ro
-      - ./config/stirling.hcl:/consul/config/stirling.hcl:ro
-      - ./config/beaverhabits.hcl:/consul/config/beaverhabits.hcl:ro
-      - ./config/excalidraw.hcl:/consul/config/excalidraw.hcl:ro
+{% for file in project.files %}
+      - ./{{ file }}:/consul/config/{{ file | basename }}:ro
+{% endfor %}
       - consul-agent-data:/consul/data
     healthcheck:
       test: ["CMD", "consul", "members"]
