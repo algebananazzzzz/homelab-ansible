@@ -39,19 +39,19 @@ Traefik already uses Consul Catalog for service discovery (`--providers.consulca
 |---|---|---|---|---|
 | `mgmt-01` | Control plane: Tailscale, Pi-hole (DNS), CA trust, Prometheus, Glance, cadvisor | 2GB | 2 | 15GB |
 | `svc-proxy-01` | Edge: Traefik, Consul (server), cadvisor | 1GB | 2 | 10GB |
-| `svc-db-01` (repurposed from the unused `svc-02` slot) | Data: postgres, redis, mongo, consul-agent, cadvisor | 4GB | 2 | 10GB |
+| `svc-db-01` (repurposed from the unused `svc-02` slot) | Data: postgres, redis, mongo, consul-agent, cadvisor | 4GB | 2 | 20GB |
 | `svc-apps-01` (replaces `svc-01`) | Apps: docmost, kaneo, beaverhabits, authelia, outline, consul-agent, cadvisor | 2GB | 2 | 15GB |
 
-Total: 9GB RAM / 8 vCPU / 50GB disk, against a 32GB/8-core host with ~17GB free at the hypervisor level today (already net of the unmanaged media stack). vCPU stays at 2 per VM across the board — CPU is soft-scheduled by KVM, not reserved the way RAM/disk are, and no measured workload approached saturating a single core.
+Total: 9GB RAM / 8 vCPU / 60GB disk, against a 32GB/8-core host with ~17GB free at the hypervisor level today (already net of the unmanaged media stack). vCPU stays at 2 per VM across the board — CPU is soft-scheduled by KVM, not reserved the way RAM/disk are, and no measured workload approached saturating a single core.
 
 ### Sizing basis
 
 Sizes come from real measurements taken during this design (container-level `docker stats`, `docker system df -v`, and `du` on the actual VMs), not defaults:
 
-- **svc-db-01**: real data footprint today is 531MB (mongo 380MB, postgres 100MB, redis 51MB); deduped image size ~2.3GB. 4GB RAM is intentionally above the ~2.5-3GB minimum implied by that, since Postgres and MongoDB both benefit from spare RAM as page/buffer cache, not just enough to hold current data.
+- **svc-db-01**: real data footprint today is 531MB (mongo 380MB, postgres 100MB, redis 51MB); deduped image size ~2.3GB. 4GB RAM is intentionally above the ~2.5-3GB minimum implied by that, since Postgres and MongoDB both benefit from spare RAM as page/buffer cache, not just enough to hold current data. Disk is set above the computed minimum too (20GB against a ~3-4GB near-term need) to leave real room for data growth as this is the tier every app ultimately depends on.
 - **svc-apps-01**: deduped image size ~4.4GB; real container memory for the five surviving apps (docmost, outline, kaneo, beaverhabits, authelia) plus consul-agent totals roughly 1.1-1.4GB today. Disk includes buffer for doc/wiki attachment growth in docmost/outline.
 - **svc-proxy-01**: measured actual usage without Prometheus/Glance is 155MB RAM (traefik 35MB + consul 49MB + cadvisor 71MB) and ~2.3GB disk. 1GB RAM leaves ~6x headroom.
-- **mgmt-01**: current native usage (Tailscale + dnsmasq) is ~810MB. Adding Prometheus (measured 534MB), Glance (9MB), Pi-hole, and cadvisor is estimated at ~1.5GB total. 2GB leaves modest headroom; Prometheus's memory tends to grow with its 30-day retention window as data accumulates, so this is the one number worth revisiting after a few weeks in production if it runs tight.
+- **mgmt-01**: current native usage (Tailscale + dnsmasq) is ~810MB. Adding Prometheus (measured 534MB), Glance (9MB), Pi-hole, and cadvisor is estimated at ~1.5GB total. 2GB leaves modest headroom. Prometheus retention is being reduced from 30 days to 7 days as part of this redesign (see below), which caps its disk/memory growth well below what the 30-day window would have required.
 
 **Known uncertainty**: cadvisor's memory usage does not scale linearly with monitored container count in an obvious way (70MB monitoring 5 containers on `svc-proxy-01` today vs. 585MB monitoring 12 on `svc-01`). Per-VM cadvisor estimates for `svc-db-01`/`svc-apps-01` above are proportional estimates, not direct measurements, and should be checked against real usage after migration.
 
@@ -63,7 +63,7 @@ Sizes come from real measurements taken during this design (container-level `doc
 - **svc-proxy-01**: loses Prometheus and Glance (move to `mgmt-01`). Keeps Traefik, Consul server, cadvisor. Name is unchanged — it's still purely a proxy/edge function, and keeping it avoids DNS/cert/inventory churn for a cosmetic gain.
 - **svc-db-01**: new home for postgres, redis, mongo. Repurposes the already-defined `svc-02` VM slot (MAC `52:54:00:20:00:12`) rather than defining a new VM from scratch — just a rename plus the resize described above.
 - **svc-apps-01**: replaces `svc-01`. Runs docmost, kaneo, beaverhabits, authelia, outline, plus consul-agent and cadvisor. Grouped as a single VM (see Non-goals) rather than split further.
-- **mgmt-01**: gains Docker (currently runs native packages only — this needs `docker: true` added to its VM definition and the host added to the `docker_hosts` inventory group), Prometheus, Glance, and Pi-hole.
+- **mgmt-01**: gains Docker (currently runs native packages only — this needs `docker: true` added to its VM definition and the host added to the `docker_hosts` inventory group), Prometheus, Glance, and Pi-hole. Prometheus's retention drops from `30d` to `7d` (`compose/prometheus/compose.yml`) as part of this move, bounding its disk/memory growth on the new host.
 
 ### Why edge stays a separate VM from mgmt
 
