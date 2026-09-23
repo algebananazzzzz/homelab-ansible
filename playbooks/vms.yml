@@ -19,6 +19,16 @@
       tags:
         - always
 
+    - name: Require an explicit VM list when limiting hosts
+      ansible.builtin.assert:
+        that:
+          - vm_names is defined or ansible_limit is not defined
+        fail_msg: >-
+          --limit does not narrow which VMs are created, so every VM in vms is provisioned.
+          Pass -e '{"vm_names": ["<name>"]}' to select VMs.
+      tags:
+        - always
+
   roles:
     - role: vm
       tags:
