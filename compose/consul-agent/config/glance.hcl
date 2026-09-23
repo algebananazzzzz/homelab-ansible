@@ -4,8 +4,9 @@ service {
   port = 8090
   tags = [
     "traefik.enable=true",
-    "traefik.http.routers.glance.entrypoints=web",
-    "traefik.http.routers.glance.rule=Host(`glance.home.arpa`)",
+    "traefik.http.routers.glance.entrypoints=web,websecure",
+    "traefik.http.routers.glance.rule=Host(`home.arpa`)",
+    "traefik.http.routers.glance.tls=true",
     "traefik.http.services.glance.loadbalancer.server.port=8090"
   ]
   check {

@@ -19,8 +19,6 @@ services:
     network_mode: host
     volumes:
       - consul-data:/consul/data
-      - ./config/glance.hcl:/consul/config/glance.hcl:ro
-      - ./config/prometheus.hcl:/consul/config/prometheus.hcl:ro
     healthcheck:
       test: ["CMD", "consul", "members"]
       interval: 5s

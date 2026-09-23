@@ -4,8 +4,9 @@ service {
   port = 9090
   tags = [
     "traefik.enable=true",
-    "traefik.http.routers.prometheus.entrypoints=web",
-    "traefik.http.routers.prometheus.rule=Host(`prometheus.home.arpa`)",
+    "traefik.http.routers.prometheus.entrypoints=web,websecure",
+    "traefik.http.routers.prometheus.rule=Host(`prometheus.ops.home.arpa`)",
+    "traefik.http.routers.prometheus.tls=true",
     "traefik.http.services.prometheus.loadbalancer.server.port=9090"
   ]
   check {

@@ -6,8 +6,11 @@ services:
     image: glanceapp/glance:latest
     environment:
       TZ: Asia/Singapore
+    dns:
+      - 10.10.10.10
     ports:
       - "8090:8080/tcp"
     volumes:
       - ./config/glance.yml:/app/config/glance.yml:ro
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     restart: unless-stopped

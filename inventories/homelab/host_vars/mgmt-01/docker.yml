@@ -1,5 +1,21 @@
 ---
 compose_root: /opt/compose
 compose_projects:
+  - name: consul-agent
+    compose_template: true
+    files:
+      - config/prometheus.hcl
+      - config/glance.hcl
   - name: pihole
+  - name: prometheus
+    files:
+      - config/prometheus.yml
+    data_directories:
+      - path: data
+        owner: "65534"
+        group: "65534"
+        mode: "0750"
+  - name: glance
+    files:
+      - config/glance.yml
   - name: cadvisor
