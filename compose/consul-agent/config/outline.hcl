@@ -5,7 +5,7 @@ service {
   tags = [
     "traefik.enable=true",
     "traefik.http.routers.outline.entrypoints=web,websecure",
-    "traefik.http.routers.outline.rule=Host(`outline.svc.home.arpa`)",
+    "traefik.http.routers.outline.rule=Host(`outline.algebananazzzzz.com`)",
     "traefik.http.routers.outline.tls=true",
     "traefik.http.services.outline.loadbalancer.server.port=3001"
   ]

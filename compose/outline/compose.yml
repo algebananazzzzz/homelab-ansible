@@ -6,7 +6,7 @@ services:
     image: outlinewiki/outline:1.10.1
     environment:
       NODE_ENV: production
-      URL: https://outline.svc.home.arpa
+      URL: https://outline.algebananazzzzz.com
       PORT: 3000
       FORCE_HTTPS: "false"
       SECRET_KEY: ${SECRET_KEY}
@@ -18,9 +18,9 @@ services:
       FILE_STORAGE_LOCAL_ROOT_DIR: /var/lib/outline/data
       OIDC_CLIENT_ID: outline
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      OIDC_AUTH_URI: https://auth.home.arpa/api/oidc/authorization
-      OIDC_TOKEN_URI: https://auth.home.arpa/api/oidc/token
-      OIDC_USERINFO_URI: https://auth.home.arpa/api/oidc/userinfo
+      OIDC_AUTH_URI: https://auth.algebananazzzzz.com/api/oidc/authorization
+      OIDC_TOKEN_URI: https://auth.algebananazzzzz.com/api/oidc/token
+      OIDC_USERINFO_URI: https://auth.algebananazzzzz.com/api/oidc/userinfo
       OIDC_DISPLAY_NAME: HomeLab SSO
       OIDC_SCOPES: openid profile email
       NODE_EXTRA_CA_CERTS: /etc/ssl/certs/homelab-ca.pem

@@ -5,7 +5,7 @@ service {
   tags = [
     "traefik.enable=true",
     "traefik.http.routers.authelia.entrypoints=web,websecure",
-    "traefik.http.routers.authelia.rule=Host(`auth.home.arpa`)",
+    "traefik.http.routers.authelia.rule=Host(`auth.home.arpa`) || Host(`auth.algebananazzzzz.com`)",
     "traefik.http.routers.authelia.tls=true",
     "traefik.http.services.authelia.loadbalancer.server.port=9091"
   ]

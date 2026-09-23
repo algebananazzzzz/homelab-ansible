@@ -36,6 +36,7 @@ compose_projects:
     secret_environment:
       POSTGRES_PASSWORD: postgres_password
       AUTH_SECRET: kaneo_auth_secret
+      CUSTOM_OAUTH_CLIENT_SECRET: kaneo_oidc_client_secret
   - name: authelia
     oidc_provider: true
     oidc_image: docker.io/authelia/authelia:4.39.20
@@ -59,6 +60,13 @@ compose_projects:
       OIDC_HMAC_SECRET: authelia_oidc_hmac_secret
       POSTGRES_PASSWORD: postgres_password
       REDIS_PASSWORD: redis_password
+    oidc_clients:
+      - id: outline
+        name: Outline
+        redirect_uri: https://outline.algebananazzzzz.com/auth/oidc.callback
+      - id: kaneo
+        name: Kaneo
+        redirect_uri: https://kaneo.algebananazzzzz.com/api/auth/oauth2/callback/custom
     templated_files:
       - config/configuration.yml
       - config/users_database.yml

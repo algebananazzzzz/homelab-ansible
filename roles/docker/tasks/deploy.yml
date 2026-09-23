@@ -89,6 +89,7 @@
         or (templated_compose_configuration.changed | default(false))
         or (project_configuration.changed | default(false))
         or (project_templated_configuration.changed | default(false))
+        or (project.certificate is defined and (server_certificate_reset.changed | default(false)))
       }}
 
 - name: Validate Compose configuration

@@ -5,7 +5,7 @@ service {
   tags = [
     "traefik.enable=true",
     "traefik.http.routers.kaneo.entrypoints=web,websecure",
-    "traefik.http.routers.kaneo.rule=Host(`kaneo.svc.home.arpa`)",
+    "traefik.http.routers.kaneo.rule=Host(`kaneo.algebananazzzzz.com`)",
     "traefik.http.routers.kaneo.tls=true",
     "traefik.http.services.kaneo.loadbalancer.server.port=5173"
   ]

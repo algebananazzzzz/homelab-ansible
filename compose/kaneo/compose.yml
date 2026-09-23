@@ -7,7 +7,19 @@ services:
     environment:
       DATABASE_URL: postgresql://admin:${POSTGRES_PASSWORD}@postgres.service.consul:5432/kaneo
       AUTH_SECRET: ${AUTH_SECRET}
-      KANEO_CLIENT_URL: https://kaneo.svc.home.arpa
+      KANEO_CLIENT_URL: https://kaneo.algebananazzzzz.com
+      KANEO_API_URL: https://kaneo.algebananazzzzz.com
+      CUSTOM_OAUTH_CLIENT_ID: kaneo
+      CUSTOM_OAUTH_CLIENT_SECRET: ${CUSTOM_OAUTH_CLIENT_SECRET}
+      CUSTOM_OAUTH_AUTHORIZATION_URL: https://auth.algebananazzzzz.com/api/oidc/authorization
+      CUSTOM_OAUTH_TOKEN_URL: https://auth.algebananazzzzz.com/api/oidc/token
+      CUSTOM_OAUTH_USER_INFO_URL: https://auth.algebananazzzzz.com/api/oidc/userinfo
+      CUSTOM_OAUTH_SCOPES: openid,profile,email
+      DISABLE_PASSWORD_REGISTRATION: "true"
+      DISABLE_LOGIN_FORM: "true"
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/homelab-ca.pem
     ports:
       - "5173:5173/tcp"
+    volumes:
+      - /usr/local/share/ca-certificates/homelab-ca.crt:/etc/ssl/certs/homelab-ca.pem:ro
     restart: unless-stopped

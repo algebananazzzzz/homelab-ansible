@@ -67,13 +67,13 @@ pages:
             cache: 30s
             sites:
               - title: Kaneo
-                url: https://kaneo.svc.home.arpa
-                icon: https://kaneo.svc.home.arpa/favicon.ico
+                url: https://kaneo.algebananazzzzz.com
+                icon: https://kaneo.algebananazzzzz.com/favicon.ico
               - title: Docmost
                 url: https://docmost.svc.home.arpa
                 icon: si:bookstack
               - title: Outline
-                url: https://outline.svc.home.arpa
+                url: https://outline.algebananazzzzz.com
                 icon: si:outline
               - title: Beaver Habits
                 url: https://beaverhabits.svc.home.arpa

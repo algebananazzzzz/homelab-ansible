@@ -8,6 +8,14 @@ compose_projects:
       - auth.home.arpa
       - "*.svc.home.arpa"
       - "*.ops.home.arpa"
+      - "*.algebananazzzzz.com"
     files:
       - dynamic.yml
   - name: cadvisor
+  - name: cloudflared
+    templated_files:
+      - config/config.yml
+    tunnel_hostnames:
+      - outline.algebananazzzzz.com
+      - kaneo.algebananazzzzz.com
+      - auth.algebananazzzzz.com

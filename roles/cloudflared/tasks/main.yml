@@ -1,0 +1,69 @@
+---
+- name: Require Cloudflare credentials
+  ansible.builtin.assert:
+    that:
+      - cloudflare_api_token | length > 0
+      - (cloudflare_tunnel_secret | b64decode | length) == 32
+    fail_msg: >-
+      Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_TUNNEL_SECRET (32 random bytes,
+      base64 encoded) in the environment, for example by sourcing .env.
+
+- name: Look up Cloudflare zone
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      path: "/zones?name={{ cloudflare_zone }}"
+
+- name: Record Cloudflare account and zone
+  ansible.builtin.set_fact:
+    cloudflare_zone_id: "{{ cloudflare_response.json.result[0].id }}"
+    cloudflare_account_id: "{{ cloudflare_response.json.result[0].account.id }}"
+
+- name: Look up Cloudflare tunnel
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      path: "/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ cloudflare_tunnel_name }}&is_deleted=false"
+
+- name: Record existing Cloudflare tunnels
+  ansible.builtin.set_fact:
+    cloudflare_tunnels: "{{ cloudflare_response.json.result }}"
+
+- name: Create Cloudflare tunnel
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      method: POST
+      path: "/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
+      body:
+        name: "{{ cloudflare_tunnel_name }}"
+        tunnel_secret: "{{ cloudflare_tunnel_secret }}"
+        config_src: local
+  when: cloudflare_tunnels | length == 0
+
+- name: Record Cloudflare tunnel ID
+  ansible.builtin.set_fact:
+    cloudflared_tunnel_id: "{{ cloudflare_tunnels[0].id if cloudflare_tunnels | length > 0 else cloudflare_response.json.result.id }}"
+
+- name: Create secrets directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/secrets"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write Cloudflare tunnel credentials
+  ansible.builtin.copy:
+    content: "{{ {'AccountTag': cloudflare_account_id, 'TunnelSecret': cloudflare_tunnel_secret, 'TunnelID': cloudflared_tunnel_id} | to_json }}"
+    dest: "{{ compose_root }}/secrets/cloudflared_credentials"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Point tunnel hostnames at the tunnel
+  ansible.builtin.include_tasks: dns.yml
+  loop: "{{ selected_projects | selectattr('tunnel_hostnames', 'defined') | map(attribute='tunnel_hostnames') | flatten | unique }}"
+  loop_control:
+    loop_var: hostname

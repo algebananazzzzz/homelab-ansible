@@ -25,6 +25,22 @@
     chdir: "{{ compose_root }}/{{ project.name }}/certs"
     creates: "{{ compose_root }}/{{ project.name }}/certs/ca.crt"
 
+- name: Remove server certificate that lacks a requested domain
+  ansible.builtin.shell:
+    cmd: |
+      [ -f server.crt ] || exit 0
+      sans=$(openssl x509 -in server.crt -noout -ext subjectAltName)
+      missing=
+      {% for domain in project.certificate_domains %}
+      printf '%s' "$sans" | grep -qF 'DNS:{{ domain }}' || missing=1
+      {% endfor %}
+      [ -n "$missing" ] || exit 0
+      rm -f server.crt server.key
+      echo changed
+    chdir: "{{ compose_root }}/{{ project.name }}/certs"
+  register: server_certificate_reset
+  changed_when: server_certificate_reset.stdout == 'changed'
+
 - name: Generate server certificate signed by the certificate authority
   vars:
     certificate_san: "{{ project.certificate_domains | map('regex_replace', '^(.*)$', 'DNS:\\1') | join(',') }}"

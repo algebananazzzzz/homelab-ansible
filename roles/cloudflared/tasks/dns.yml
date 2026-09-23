@@ -1,0 +1,38 @@
+---
+- name: "Look up DNS record for {{ hostname }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      path: "/zones/{{ cloudflare_zone_id }}/dns_records?name={{ hostname }}"
+
+- name: Describe desired DNS record
+  ansible.builtin.set_fact:
+    tunnel_dns_record:
+      type: CNAME
+      name: "{{ hostname }}"
+      content: "{{ cloudflared_tunnel_id }}.cfargotunnel.com"
+      proxied: true
+      ttl: 1
+    existing_dns_record: "{{ cloudflare_response.json.result | first | default({}) }}"
+
+- name: "Create DNS record for {{ hostname }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      method: POST
+      path: "/zones/{{ cloudflare_zone_id }}/dns_records"
+      body: "{{ tunnel_dns_record }}"
+  when: existing_dns_record | length == 0
+
+- name: "Update DNS record for {{ hostname }}"
+  ansible.builtin.include_tasks: api.yml
+  vars:
+    request:
+      method: PUT
+      path: "/zones/{{ cloudflare_zone_id }}/dns_records/{{ existing_dns_record.id }}"
+      body: "{{ tunnel_dns_record }}"
+  when:
+    - existing_dns_record | length > 0
+    - existing_dns_record.type != tunnel_dns_record.type
+      or existing_dns_record.content != tunnel_dns_record.content
+      or not existing_dns_record.proxied

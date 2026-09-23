@@ -77,6 +77,11 @@
     loop_var: project
     label: "{{ project.name }}"
 
+- name: Read Cloudflare tunnel credentials
+  ansible.builtin.include_role:
+    name: cloudflared
+  when: selected_projects | selectattr('tunnel_hostnames', 'defined') | list | length > 0
+
 - name: Trust internal certificate authority
   ansible.builtin.include_role:
     name: ca_trust
