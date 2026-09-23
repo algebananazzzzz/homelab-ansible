@@ -1,0 +1,17 @@
+---
+compose_root: /opt/compose
+compose_projects:
+  - name: consul-agent
+    compose_template: true
+    files:
+      - config/postgres.hcl
+      - config/redis.hcl
+      - config/mongo.hcl
+  - name: postgres
+    secrets:
+      - postgres_password
+  - name: redis
+    secrets:
+      - redis_password
+  - name: mongo
+  - name: cadvisor
