@@ -6,7 +6,7 @@ services:
     image: postgres:18
     environment:
       POSTGRES_DB: docmost
-      POSTGRES_USER: postgres
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     ports:
       - "5432:5432/tcp"

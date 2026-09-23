@@ -31,7 +31,7 @@ compose_projects:
     database:
       name: kaneo
       service: postgres
-      user: postgres
+      user: admin
       password_secret: postgres_password
     secrets:
       - kaneo_auth_secret
@@ -46,7 +46,7 @@ compose_projects:
     database:
       name: authelia
       service: postgres
-      user: postgres
+      user: admin
       password_secret: postgres_password
     secrets:
       - authelia_session_secret
@@ -69,7 +69,7 @@ compose_projects:
     database:
       name: outline
       service: postgres
-      user: postgres
+      user: admin
       password_secret: postgres_password
     secrets:
       - outline_secret_key

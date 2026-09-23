@@ -28,6 +28,7 @@
   register: project_database
   changed_when: project_database.stdout == 'changed'
   no_log: true
+  delegate_to: "{{ project.database.host | default(inventory_hostname) }}"
   when: project.database is defined
 
 - name: Write static Compose configuration
@@ -57,7 +58,7 @@
     owner: root
     group: root
     mode: "0750"
-  loop: "{{ project.files | default([]) }}"
+  loop: "{{ (project.files | default([])) + (project.templated_files | default([])) }}"
   when: (item | dirname | length) > 0
 
 - name: Write project configuration
@@ -70,6 +71,16 @@
   loop: "{{ project.files | default([]) }}"
   register: project_configuration
 
+- name: Write templated project configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../compose/{{ project.name }}/{{ item }}.j2"
+    dest: "{{ compose_root }}/{{ project.name }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ project.templated_files | default([]) }}"
+  register: project_templated_configuration
+
 - name: Record project configuration state
   ansible.builtin.set_fact:
     project_configuration_changed: >-
@@ -77,6 +88,7 @@
         (static_compose_configuration.changed | default(false))
         or (templated_compose_configuration.changed | default(false))
         or (project_configuration.changed | default(false))
+        or (project_templated_configuration.changed | default(false))
       }}
 
 - name: Validate Compose configuration

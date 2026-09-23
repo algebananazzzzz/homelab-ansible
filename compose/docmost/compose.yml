@@ -5,9 +5,9 @@ services:
     container_name: docmost
     image: docmost/docmost:0.95.0
     environment:
-      APP_URL: http://docmost.home.arpa
+      APP_URL: https://docmost.svc.home.arpa
       APP_SECRET: ${DOCMOST_APP_SECRET}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres.service.consul:5432/docmost?schema=public
+      DATABASE_URL: postgresql://admin:${POSTGRES_PASSWORD}@postgres.service.consul:5432/docmost?schema=public
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis.service.consul:6379/1
       STORAGE_DRIVER: local
     ports:

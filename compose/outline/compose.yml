@@ -1,0 +1,36 @@
+name: outline
+
+services:
+  outline:
+    container_name: outline
+    image: outlinewiki/outline:1.10.1
+    environment:
+      NODE_ENV: production
+      URL: https://outline.svc.home.arpa
+      PORT: 3000
+      FORCE_HTTPS: "false"
+      SECRET_KEY: ${SECRET_KEY}
+      UTILS_SECRET: ${UTILS_SECRET}
+      DATABASE_URL: postgresql://admin:${POSTGRES_PASSWORD}@postgres.service.consul:5432/outline?schema=public
+      PGSSLMODE: disable
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis.service.consul:6379/3
+      FILE_STORAGE: local
+      FILE_STORAGE_LOCAL_ROOT_DIR: /var/lib/outline/data
+      OIDC_CLIENT_ID: outline
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_AUTH_URI: https://auth.home.arpa/api/oidc/authorization
+      OIDC_TOKEN_URI: https://auth.home.arpa/api/oidc/token
+      OIDC_USERINFO_URI: https://auth.home.arpa/api/oidc/userinfo
+      OIDC_DISPLAY_NAME: HomeLab SSO
+      OIDC_SCOPES: openid profile email
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/homelab-ca.pem
+    ports:
+      - "3001:3000/tcp"
+    volumes:
+      - outline-data:/var/lib/outline/data
+      - /usr/local/share/ca-certificates/homelab-ca.crt:/etc/ssl/certs/homelab-ca.pem:ro
+    restart: unless-stopped
+
+volumes:
+  outline-data:
+    name: homelab-outline-data

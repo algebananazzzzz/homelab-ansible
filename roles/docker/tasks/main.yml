@@ -41,13 +41,46 @@
     mode: "0700"
   when: selected_projects | map(attribute='secrets', default=[]) | flatten | length > 0
 
-- name: Generate service secrets
+- name: Generate static service secrets
+  ansible.builtin.copy:
+    content: "{{ static_secret_values[item] }}"
+    dest: "{{ compose_root }}/secrets/{{ item }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | intersect(static_secret_values.keys() | list) }}"
+  no_log: true
+
+- name: Generate random service secrets
   ansible.builtin.shell:
     cmd: >-
       umask 077;
       openssl rand -hex 32 > {{ compose_root }}/secrets/{{ item }}
     creates: "{{ compose_root }}/secrets/{{ item }}"
-  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique }}"
+  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | difference(static_secret_values.keys() | list) }}"
+
+- name: Generate project TLS certificates
+  ansible.builtin.include_role:
+    name: tls
+    allow_duplicates: true
+  loop: "{{ selected_projects | selectattr('certificate', 'defined') | list }}"
+  loop_control:
+    loop_var: project
+    label: "{{ project.name }}"
+
+- name: Generate project OIDC provider secrets
+  ansible.builtin.include_role:
+    name: oidc
+    allow_duplicates: true
+  loop: "{{ selected_projects | selectattr('oidc_provider', 'defined') | list }}"
+  loop_control:
+    loop_var: project
+    label: "{{ project.name }}"
+
+- name: Trust internal certificate authority
+  ansible.builtin.include_role:
+    name: ca_trust
+  when: inventory_hostname in groups['internal_ca_trust_hosts']
 
 - name: Write project environment files
   ansible.builtin.include_tasks: environment.yml
