@@ -4,20 +4,11 @@ compose_projects:
   - name: consul-agent
     compose_template: true
     files:
-      - config/postgres.hcl
-      - config/redis.hcl
       - config/docmost.hcl
       - config/kaneo.hcl
-      - config/mongo.hcl
       - config/beaverhabits.hcl
       - config/authelia.hcl
       - config/outline.hcl
-  - name: postgres
-    secrets:
-      - postgres_password
-  - name: redis
-    secrets:
-      - redis_password
   - name: docmost
     secrets:
       - docmost_app_secret
@@ -31,6 +22,7 @@ compose_projects:
     database:
       name: kaneo
       service: postgres
+      host: svc-db-01
       user: admin
       password_secret: postgres_password
     secrets:
@@ -39,13 +31,13 @@ compose_projects:
     secret_environment:
       POSTGRES_PASSWORD: postgres_password
       AUTH_SECRET: kaneo_auth_secret
-  - name: mongo
   - name: authelia
     oidc_provider: true
     oidc_image: docker.io/authelia/authelia:4.39.20
     database:
       name: authelia
       service: postgres
+      host: svc-db-01
       user: admin
       password_secret: postgres_password
     secrets:
@@ -69,6 +61,7 @@ compose_projects:
     database:
       name: outline
       service: postgres
+      host: svc-db-01
       user: admin
       password_secret: postgres_password
     secrets:
