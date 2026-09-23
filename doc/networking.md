@@ -30,8 +30,7 @@
 | `mgmt-01` | `br-mgmt` | 2GB | 2 | 20GB | Tailscale subnet router, Pi-hole, Prometheus, Glance, cadvisor, Consul agent |
 | `svc-proxy-01` | `br-svc` | 2GB | 2 | 20GB | Traefik, Consul server, cadvisor |
 | `svc-db-01` | `br-svc` | 4GB | 2 | 20GB | PostgreSQL, Redis, MongoDB, cadvisor, Consul agent |
-| `svc-apps-01` | `br-svc` | 2GB | 2 | 15GB | Docmost, Kaneo, Outline, Authelia, Beaver Habits, cadvisor, Consul agent |
-| `lab-01` | `br-lab` | 2GB | 2 | 20GB | Nothing deployed |
+| `svc-apps-01` | `br-svc` | 4GB | 2 | 15GB | Docmost, Kaneo, Outline, Authelia, Beaver Habits, cadvisor, Consul agent |
 
 Applications reach their databases by Consul name (`postgres.service.consul`, `redis.service.consul`), so a database or application can move to another VM by moving its compose project and Consul registration.
 
