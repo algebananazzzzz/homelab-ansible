@@ -16,13 +16,6 @@ vms:
     vcpus: 2
     disk_gb: 20
     docker: true
-  - name: svc-01
-    network: br-svc
-    mac: "52:54:00:20:00:11"
-    memory_mb: 4096
-    vcpus: 2
-    disk_gb: 40
-    docker: true
   - name: svc-db-01
     network: br-svc
     mac: "52:54:00:20:00:12"

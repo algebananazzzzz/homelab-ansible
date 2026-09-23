@@ -1,7 +1,0 @@
----
-compose_root: /opt/compose
-compose_projects:
-  - name: consul-agent
-    compose_template: true
-    files: []
-  - name: cadvisor
