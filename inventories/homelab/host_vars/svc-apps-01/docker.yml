@@ -1,4 +1,90 @@
 ---
 compose_root: /opt/compose
 compose_projects:
+  - name: consul-agent
+    compose_template: true
+    files:
+      - config/docmost.hcl
+      - config/kaneo.hcl
+      - config/beaverhabits.hcl
+      - config/authelia.hcl
+      - config/outline.hcl
+  - name: docmost
+    database:
+      name: docmost
+      service: postgres
+      host: svc-db-01
+      user: admin
+      password_secret: postgres_password
+    secrets:
+      - docmost_app_secret
+      - postgres_password
+      - redis_password
+    secret_environment:
+      DOCMOST_APP_SECRET: docmost_app_secret
+      POSTGRES_PASSWORD: postgres_password
+      REDIS_PASSWORD: redis_password
+  - name: kaneo
+    database:
+      name: kaneo
+      service: postgres
+      host: svc-db-01
+      user: admin
+      password_secret: postgres_password
+    secrets:
+      - kaneo_auth_secret
+      - postgres_password
+    secret_environment:
+      POSTGRES_PASSWORD: postgres_password
+      AUTH_SECRET: kaneo_auth_secret
+  - name: authelia
+    oidc_provider: true
+    oidc_image: docker.io/authelia/authelia:4.39.20
+    database:
+      name: authelia
+      service: postgres
+      host: svc-db-01
+      user: admin
+      password_secret: postgres_password
+    secrets:
+      - authelia_session_secret
+      - authelia_storage_encryption_key
+      - authelia_jwt_secret
+      - authelia_oidc_hmac_secret
+      - postgres_password
+      - redis_password
+    secret_environment:
+      SESSION_SECRET: authelia_session_secret
+      STORAGE_ENCRYPTION_KEY: authelia_storage_encryption_key
+      JWT_SECRET: authelia_jwt_secret
+      OIDC_HMAC_SECRET: authelia_oidc_hmac_secret
+      POSTGRES_PASSWORD: postgres_password
+      REDIS_PASSWORD: redis_password
+    templated_files:
+      - config/configuration.yml
+      - config/users_database.yml
+  - name: outline
+    database:
+      name: outline
+      service: postgres
+      host: svc-db-01
+      user: admin
+      password_secret: postgres_password
+    secrets:
+      - outline_secret_key
+      - outline_utils_secret
+      - postgres_password
+      - redis_password
+    secret_environment:
+      SECRET_KEY: outline_secret_key
+      UTILS_SECRET: outline_utils_secret
+      OIDC_CLIENT_SECRET: outline_oidc_client_secret
+      POSTGRES_PASSWORD: postgres_password
+      REDIS_PASSWORD: redis_password
+  - name: beaverhabits
+    data_directories:
+      - path: data
+        owner: "65534"
+        group: "65534"
+        mode: "0750"
   - name: cadvisor
