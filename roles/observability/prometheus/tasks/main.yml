@@ -1,0 +1,62 @@
+---
+- name: Create Prometheus directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/prometheus"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create Prometheus config directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/prometheus/config"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# The image runs as nobody.
+- name: Create Prometheus data directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/prometheus/data"
+    state: directory
+    owner: "65534"
+    group: "65534"
+    mode: "0750"
+
+- name: Write Prometheus Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/prometheus/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Write Prometheus configuration
+  ansible.builtin.copy:
+    src: prometheus.yml
+    dest: "{{ compose_root }}/prometheus/config/prometheus.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: prometheus_configuration
+
+- name: Start Prometheus
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/prometheus"
+    remove_orphans: true
+    wait: true
+    # The configuration is a bind-mounted file, which Compose does not track.
+    recreate: "{{ 'always' if prometheus_configuration.changed else 'auto' }}"
+
+- name: Register Prometheus with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: prometheus
+      port: 9090
+      hostnames:
+        - prometheus.ops.home.arpa
+      health_path: /-/healthy

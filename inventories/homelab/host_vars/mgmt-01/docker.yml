@@ -1,17 +1,8 @@
 ---
 compose_projects:
-  - name: prometheus
-    files:
-      - config/prometheus.yml
-    data_directories:
-      - path: data
-        owner: "65534"
-        group: "65534"
-        mode: "0750"
   - name: glance
     environment:
       KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
       OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"
     files:
       - config/glance.yml
-  - name: cadvisor

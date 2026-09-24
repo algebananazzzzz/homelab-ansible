@@ -1,0 +1,24 @@
+---
+- name: Deploy cAdvisor
+  hosts: docker_hosts
+  gather_facts: false
+  become: true
+
+  roles:
+    - observability/cadvisor
+
+- name: Install Node Exporter
+  hosts: hypervisor:vm
+  gather_facts: true
+  become: true
+
+  roles:
+    - observability/node_exporter
+
+- name: Deploy Prometheus
+  hosts: prometheus
+  gather_facts: false
+  become: true
+
+  roles:
+    - observability/prometheus

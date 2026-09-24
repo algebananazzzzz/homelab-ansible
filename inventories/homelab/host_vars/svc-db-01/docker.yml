@@ -7,4 +7,3 @@ compose_projects:
     secrets:
       - redis_password
   - name: mongo
-  - name: cadvisor

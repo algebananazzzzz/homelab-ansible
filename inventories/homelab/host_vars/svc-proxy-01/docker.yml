@@ -7,7 +7,6 @@ compose_projects:
     force_recreate: "{{ tls_certificate_changed | default(false) }}"
     files:
       - dynamic.yml
-  - name: cadvisor
   - name: cloudflared
     templated_files:
       - config/config.yml

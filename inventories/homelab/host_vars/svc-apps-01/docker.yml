@@ -58,4 +58,3 @@ compose_projects:
         owner: "65534"
         group: "65534"
         mode: "0750"
-  - name: cadvisor

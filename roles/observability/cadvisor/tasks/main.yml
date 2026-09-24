@@ -1,0 +1,22 @@
+---
+- name: Create cAdvisor directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/cadvisor"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write cAdvisor Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/cadvisor/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start cAdvisor
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/cadvisor"
+    remove_orphans: true
+    wait: true

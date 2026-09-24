@@ -11,7 +11,7 @@
         fail_msg: One or more requested Compose projects are not assigned to any host.
       run_once: true
       vars:
-        all_project_names: "{{ groups['docker_hosts'] | map('extract', hostvars, 'compose_projects') | flatten | map(attribute='name') | unique | list }}"
+        all_project_names: "{{ groups['docker_hosts'] | map('extract', hostvars) | selectattr('compose_projects', 'defined') | map(attribute='compose_projects') | flatten | map(attribute='name') | unique | list }}"
 
 # The CA needs only openssl, so it exists before any container that mounts it starts.
 - name: Issue internal certificates
@@ -60,11 +60,4 @@
 
   roles:
     - authelia
-    - compose
-
-- name: Deploy hypervisor services
-  hosts: hypervisor
-  become: true
-
-  roles:
     - compose
