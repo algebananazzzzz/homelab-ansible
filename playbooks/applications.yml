@@ -1,6 +1,6 @@
 ---
 - name: Check requested Compose projects
-  hosts: docker_hosts
+  hosts: applications
   gather_facts: false
 
   tasks:
@@ -11,20 +11,19 @@
         fail_msg: One or more requested Compose projects are not assigned to any host.
       run_once: true
       vars:
-        all_project_names: "{{ groups['docker_hosts'] | map('extract', hostvars) | selectattr('compose_projects', 'defined') | map(attribute='compose_projects') | flatten | map(attribute='name') | unique | list }}"
+        all_project_names: "{{ groups['applications'] | map('extract', hostvars, 'compose_projects') | flatten | map(attribute='name') | unique | list }}"
 
-# Every other VM resolves through Pi-hole on mgmt-01.
-- name: Deploy DNS and monitoring services
-  hosts: mgmt-01
-  become: true
-
-  roles:
-    - compose
-
-- name: Deploy applications
-  hosts: svc-apps-01
+# Kaneo and Outline read the OIDC client secrets that the Authelia role writes.
+- name: Prepare Authelia
+  hosts: authelia
   become: true
 
   roles:
     - authelia
-    - compose
+
+- name: Deploy applications
+  hosts: applications
+  become: true
+
+  roles:
+    - applications/compose

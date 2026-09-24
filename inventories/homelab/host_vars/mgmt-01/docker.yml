@@ -1,6 +1,11 @@
 ---
 compose_projects:
   - name: glance
+    consul:
+      port: 8090
+      hostnames:
+        - home.arpa
+      health_path: /
     environment:
       KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
       OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"

@@ -7,30 +7,10 @@
     requested_projects: "{{ compose_projects | selectattr('name', 'in', project_names | default(compose_projects | map(attribute='name') | list, true)) | list }}"
     absent_project_names: "{{ compose_projects | selectattr('absent', 'defined') | selectattr('absent') | map(attribute='name') | list }}"
 
-- name: Require static service secrets
-  ansible.builtin.assert:
-    that:
-      - env_secrets[item] | length > 0
-    fail_msg: "{{ item | upper }} is empty. Set it in the environment, for example by sourcing .env."
-  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | intersect(env_secrets.keys() | list) }}"
-
-- name: Write static service secrets
-  ansible.builtin.copy:
-    content: "{{ env_secrets[item] }}"
-    dest: "{{ compose_root }}/secrets/{{ item }}"
-    owner: root
-    group: root
-    mode: "0600"
-  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | intersect(env_secrets.keys() | list) }}"
-  no_log: true
-
-- name: Generate random service secrets
-  ansible.builtin.shell:
-    cmd: >-
-      umask 077;
-      openssl rand -hex 32 > {{ compose_root }}/secrets/{{ item }}
-    creates: "{{ compose_root }}/secrets/{{ item }}"
-  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | difference(env_secrets.keys() | list) }}"
+- name: Write project secrets
+  ansible.builtin.include_tasks: secrets.yml
+  vars:
+    secret_names: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique }}"
 
 - name: Write project environment files
   ansible.builtin.include_tasks: environment.yml

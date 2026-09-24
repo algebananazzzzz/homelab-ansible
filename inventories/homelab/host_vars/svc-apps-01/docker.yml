@@ -9,6 +9,11 @@ authelia_oidc_clients:
 
 compose_projects:
   - name: kaneo
+    consul:
+      port: 5173
+      hostnames:
+        - "{{ public_hostnames.kaneo }}"
+      health_path: /
     environment:
       KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
       AUTH_HOSTNAME: "{{ public_hostnames.auth }}"
@@ -38,6 +43,11 @@ compose_projects:
       - config/configuration.yml
       - config/users_database.yml
   - name: outline
+    consul:
+      port: 3001
+      hostnames:
+        - "{{ public_hostnames.outline }}"
+      health_path: /_health
     environment:
       OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"
       AUTH_HOSTNAME: "{{ public_hostnames.auth }}"
@@ -53,6 +63,11 @@ compose_projects:
       POSTGRES_PASSWORD: postgres_password
       REDIS_PASSWORD: redis_password
   - name: beaverhabits
+    consul:
+      port: 8082
+      hostnames:
+        - beaverhabits.svc.home.arpa
+      health_path: /
     data_directories:
       - path: data
         owner: "65534"

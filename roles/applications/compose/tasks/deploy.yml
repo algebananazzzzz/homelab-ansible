@@ -23,7 +23,6 @@
     owner: root
     group: root
     mode: "0640"
-  register: compose_configuration
 
 - name: Create project configuration directories
   ansible.builtin.file:
@@ -55,32 +54,12 @@
   loop: "{{ project.templated_files | default([]) }}"
   register: project_templated_configuration
 
-# The whole config directory is mounted, so a leftover file would still be loaded.
-- name: Find stale project configuration
-  ansible.builtin.find:
-    paths: "{{ compose_root }}/{{ project.name }}/config"
-    excludes: "{{ ((project.files | default([])) + (project.templated_files | default([]))) | map('basename') | list }}"
-  register: stale_configuration
-  when: project.prune_config | default(false)
-
-- name: Remove stale project configuration
-  ansible.builtin.file:
-    path: "{{ item.path }}"
-    state: absent
-  loop: "{{ stale_configuration.files | default([]) }}"
-  loop_control:
-    label: "{{ item.path }}"
-  register: pruned_configuration
-
 - name: Record project configuration state
   ansible.builtin.set_fact:
     project_configuration_changed: >-
       {{
-        (compose_configuration.changed | default(false))
-        or (project_configuration.changed | default(false))
+        (project_configuration.changed | default(false))
         or (project_templated_configuration.changed | default(false))
-        or (pruned_configuration.changed | default(false))
-        or (project.force_recreate | default(false) | bool)
       }}
 
 - name: Apply Compose project
@@ -91,3 +70,11 @@
     # Compose hashes its own config but not bind-mounted files, so a changed
     # config file needs an explicit recreate.
     recreate: "{{ 'always' if project_configuration_changed else 'auto' }}"
+
+- name: Register project with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service: "{{ {'name': project.name} | combine(project.consul) }}"
+  when: project.consul is defined
