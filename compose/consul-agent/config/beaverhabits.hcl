@@ -4,8 +4,9 @@ service {
   port = 8082
   tags = [
     "traefik.enable=true",
-    "traefik.http.routers.beaverhabits.entrypoints=web",
-    "traefik.http.routers.beaverhabits.rule=Host(`beaverhabits.home.arpa`)",
+    "traefik.http.routers.beaverhabits.entrypoints=web,websecure",
+    "traefik.http.routers.beaverhabits.rule=Host(`beaverhabits.svc.home.arpa`)",
+    "traefik.http.routers.beaverhabits.tls=true",
     "traefik.http.services.beaverhabits.loadbalancer.server.port=8082"
   ]
   check {

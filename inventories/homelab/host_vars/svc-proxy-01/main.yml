@@ -1,0 +1,11 @@
+---
+ansible_host: "{{ vm_definition.address }}"
+vm_definition:
+  name: svc-proxy-01
+  network: br-svc
+  mac: '52:54:00:20:00:10'
+  address: 10.10.20.10
+  memory_mb: 2048
+  vcpus: 2
+  disk_gb: 20
+  docker: true

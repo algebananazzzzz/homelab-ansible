@@ -1,6 +1,6 @@
 ---
 - name: Configure homelab infrastructure
-  hosts: hypervisors
+  hosts: hypervisor
   gather_facts: true
   become: true
 

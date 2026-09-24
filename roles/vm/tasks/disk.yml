@@ -1,0 +1,22 @@
+---
+- name: Create VM disk overlay
+  ansible.builtin.command:
+    argv:
+      - qemu-img
+      - create
+      - -f
+      - qcow2
+      - -F
+      - qcow2
+      - -b
+      - "{{ vm_base_image_path }}"
+      - "{{ vm_disk_path }}"
+      - "{{ vm.disk_gb }}G"
+    creates: "{{ vm_disk_path }}"
+
+- name: Set VM disk permissions
+  ansible.builtin.file:
+    path: "{{ vm_disk_path }}"
+    owner: libvirt-qemu
+    group: kvm
+    mode: "0660"

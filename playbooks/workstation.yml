@@ -1,0 +1,8 @@
+---
+- name: Trust internal certificate authority on workstation
+  hosts: local
+  gather_facts: false
+  become: true
+
+  roles:
+    - ca_trust

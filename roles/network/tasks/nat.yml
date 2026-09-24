@@ -15,24 +15,24 @@
     group: root
     mode: "0644"
     validate: /usr/sbin/nft -c -f %s
-  register: nat_config
+  register: nat_rules_result
 
-- name: Install network service
+- name: Install routing and NAT service
   ansible.builtin.template:
-    src: network.service.j2
+    src: router.service.j2
     dest: /etc/systemd/system/homelab-router.service
     owner: root
     group: root
     mode: "0644"
-  register: network_service
+  register: router_service_result
 
 - name: Reload systemd
   ansible.builtin.systemd_service:
     daemon_reload: true
-  when: network_service.changed
+  when: router_service_result.changed
 
-- name: Enable network service
+- name: Enable routing and NAT service
   ansible.builtin.systemd_service:
     name: homelab-router.service
     enabled: true
-    state: "{{ 'restarted' if nat_config.changed or network_service.changed else 'started' }}"
+    state: "{{ 'restarted' if nat_rules_result.changed or router_service_result.changed else 'started' }}"

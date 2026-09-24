@@ -1,0 +1,74 @@
+---
+- name: Create project directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create OIDC provider directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}/oidc"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Generate OIDC signing key pair
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      docker run --rm -v {{ compose_root }}/{{ project.name }}/oidc:/keys \
+        {{ project.oidc_image }} authelia crypto pair rsa generate --directory /keys
+      chmod 644 private.pem public.pem
+    chdir: "{{ compose_root }}/{{ project.name }}/oidc"
+    creates: "{{ compose_root }}/{{ project.name }}/oidc/private.pem"
+
+- name: Generate Outline OIDC client secret
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      docker run --rm {{ project.oidc_image }} authelia crypto hash generate pbkdf2 \
+        --variant sha512 --random --random.length 72 --random.charset rfc3986 > raw.txt
+      grep 'Random Password:' raw.txt | sed 's/Random Password: //' > outline_client_secret.txt
+      grep 'Digest:' raw.txt | sed 's/Digest: //' > outline_client_secret_hash.txt
+      rm -f raw.txt
+    chdir: "{{ compose_root }}/{{ project.name }}/oidc"
+    creates: "{{ compose_root }}/{{ project.name }}/oidc/outline_client_secret.txt"
+
+- name: Generate Authelia user password
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      openssl rand -hex 24 > user_password.txt
+      docker run --rm {{ project.oidc_image }} authelia crypto hash generate argon2 \
+        --password "$(cat user_password.txt)" > raw.txt
+      grep 'Digest:' raw.txt | sed 's/Digest: //' > user_password_hash.txt
+      rm -f raw.txt
+    chdir: "{{ compose_root }}/{{ project.name }}/oidc"
+    creates: "{{ compose_root }}/{{ project.name }}/oidc/user_password.txt"
+
+- name: Copy Outline OIDC client secret to shared secrets
+  ansible.builtin.copy:
+    src: "{{ compose_root }}/{{ project.name }}/oidc/outline_client_secret.txt"
+    dest: "{{ compose_root }}/secrets/outline_oidc_client_secret"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Read generated OIDC artifacts
+  ansible.builtin.slurp:
+    src: "{{ compose_root }}/{{ project.name }}/oidc/{{ item }}"
+  loop:
+    - private.pem
+    - outline_client_secret_hash.txt
+    - user_password_hash.txt
+  register: oidc_artifacts
+
+- name: Set OIDC template facts
+  ansible.builtin.set_fact:
+    oidc_jwks_private_key: "{{ oidc_artifacts.results[0].content | b64decode }}"
+    oidc_outline_client_secret_hash: "{{ (oidc_artifacts.results[1].content | b64decode) | trim }}"
+    oidc_user_password_hash: "{{ (oidc_artifacts.results[2].content | b64decode) | trim }}"

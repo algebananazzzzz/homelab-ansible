@@ -8,6 +8,8 @@ services:
       - --api.dashboard=true
       - --ping=true
       - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
       - --providers.consulcatalog.endpoint.address=127.0.0.1:8500
       - --providers.consulcatalog.exposedbydefault=false
@@ -17,6 +19,7 @@ services:
     network_mode: host
     volumes:
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./certs:/etc/traefik/certs:ro
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s

@@ -1,0 +1,20 @@
+---
+- name: Read internal certificate authority certificate
+  ansible.builtin.slurp:
+    src: "{{ hostvars['svc-proxy-01'].compose_root }}/traefik/certs/ca.crt"
+  delegate_to: svc-proxy-01
+  register: internal_ca_certificate
+
+- name: Install internal certificate authority certificate
+  ansible.builtin.copy:
+    content: "{{ internal_ca_certificate.content | b64decode }}"
+    dest: /usr/local/share/ca-certificates/homelab-ca.crt
+    owner: root
+    group: root
+    mode: "0644"
+  register: internal_ca_certificate_installed
+
+- name: Refresh certificate trust store
+  ansible.builtin.command:
+    cmd: update-ca-certificates
+  when: internal_ca_certificate_installed.changed

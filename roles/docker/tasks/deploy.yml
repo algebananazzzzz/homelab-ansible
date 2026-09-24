@@ -128,15 +128,29 @@
   register: running_services
   changed_when: false
 
-- name: Apply Compose project
+- name: Recreate Compose project after configuration changes
   ansible.builtin.command:
-    argv: >-
-      {{
-        [
-          'docker', 'compose',
-          '--project-directory', compose_root ~ '/' ~ project.name,
-          'up', '--detach', '--remove-orphans', '--wait'
-        ]
-        + (['--force-recreate'] if project_configuration_changed else [])
-      }}
-  when: project_configuration_changed or expected_services.stdout_lines | difference(running_services.stdout_lines) | length > 0
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ compose_root }}/{{ project.name }}"
+      - up
+      - --detach
+      - --remove-orphans
+      - --wait
+      - --force-recreate
+  when: project_configuration_changed
+
+- name: Start missing Compose services
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ compose_root }}/{{ project.name }}"
+      - up
+      - --detach
+      - --remove-orphans
+      - --wait
+  when: not project_configuration_changed and expected_services.stdout_lines | difference(running_services.stdout_lines) | length > 0

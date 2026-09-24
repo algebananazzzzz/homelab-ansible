@@ -27,7 +27,10 @@
 
 - name: Check Tailscale package metadata
   ansible.builtin.command:
-    argv: [apt-cache, show, tailscale]
+    argv:
+      - apt-cache
+      - show
+      - tailscale
   register: tailscale_package
   changed_when: false
   failed_when: false
@@ -75,12 +78,18 @@
 
 - name: Enable subnet router forwarding
   ansible.builtin.command:
-    argv: [/usr/sbin/sysctl, -p, /etc/sysctl.d/99-tailscale.conf]
+    argv:
+      - /usr/sbin/sysctl
+      - -p
+      - /etc/sysctl.d/99-tailscale.conf
   when: tailscale_sysctl.changed
 
 - name: Read Tailscale preferences
   ansible.builtin.command:
-    argv: [tailscale, debug, prefs]
+    argv:
+      - tailscale
+      - debug
+      - prefs
   register: tailscale_preferences
   changed_when: false
 

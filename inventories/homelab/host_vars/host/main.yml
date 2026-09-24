@@ -1,0 +1,5 @@
+---
+ansible_host: 100.116.110.63
+ansible_port: 2222
+host_expected_hostname: DXP4800PRO-F0EE
+storage_root: /volume1/@kvm/homelab

@@ -1,6 +1,6 @@
 ---
 - name: Discover dynamic service VM addresses
-  hosts: hypervisors
+  hosts: hypervisor
   gather_facts: false
   become: true
 
@@ -13,7 +13,7 @@
           - "{{ hostvars[item].vm_network }}"
           - --mac
           - "{{ hostvars[item].vm_mac }}"
-      loop: "{{ groups['service_vms'] }}"
+      loop: "{{ groups['service'] }}"
       when: hostvars[item].ansible_host is not defined
       register: dynamic_service_vm_leases
       changed_when: false
@@ -27,7 +27,7 @@
       changed_when: false
 
 - name: Install Node Exporter
-  hosts: hypervisors:service_vms:management
+  hosts: hypervisor:service:management
   gather_facts: true
   become: true
 

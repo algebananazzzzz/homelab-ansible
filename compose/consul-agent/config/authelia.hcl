@@ -1,0 +1,17 @@
+service {
+  id   = "authelia"
+  name = "authelia"
+  port = 9091
+  tags = [
+    "traefik.enable=true",
+    "traefik.http.routers.authelia.entrypoints=web,websecure",
+    "traefik.http.routers.authelia.rule=Host(`auth.home.arpa`)",
+    "traefik.http.routers.authelia.tls=true",
+    "traefik.http.services.authelia.loadbalancer.server.port=9091"
+  ]
+  check {
+    http     = "http://127.0.0.1:9091/api/health"
+    interval = "10s"
+    timeout  = "5s"
+  }
+}

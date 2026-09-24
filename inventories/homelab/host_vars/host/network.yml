@@ -1,19 +1,19 @@
 ---
+host_uplink_interface: eth0
+host_lan_address: 192.168.50.39/24
+host_home_cidr: 192.168.50.0/24
+host_internal_cidr: 10.10.0.0/16
+host_lan_ip: "{{ host_lan_address.split('/')[0] }}"
+
 networks:
   - name: br-mgmt
     gateway: 10.10.10.1
-    reservations:
-      - name: mgmt-01
-        mac: "52:54:00:10:00:10"
-        address: 10.10.10.10
+    reservations: "{{ vms | selectattr('network', 'equalto', 'br-mgmt') | selectattr('address', 'defined') | list }}"
   - name: br-svc
     gateway: 10.10.20.1
     dhcp_start: 10.10.20.100
     dhcp_end: 10.10.20.199
-    reservations:
-      - name: svc-proxy-01
-        mac: "52:54:00:20:00:10"
-        address: 10.10.20.10
+    reservations: "{{ vms | selectattr('network', 'equalto', 'br-svc') | selectattr('address', 'defined') | list }}"
   - name: br-lab
     gateway: 10.10.30.1
     dhcp_start: 10.10.30.100

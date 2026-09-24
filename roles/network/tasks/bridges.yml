@@ -1,60 +1,58 @@
 ---
-- name: Read networks
+- name: Read defined libvirt networks
   ansible.builtin.command:
-    argv: [virsh, net-list, --all, --name]
-  register: existing_networks
+    argv:
+      - virsh
+      - net-list
+      - --all
+      - --name
+  register: defined_networks_result
   changed_when: false
   check_mode: false
 
-- name: Define networks
+- name: Define missing libvirt networks
   ansible.builtin.command:
-    argv: [virsh, net-define, /dev/stdin]
-    stdin: |
-      <network>
-        <name>{{ item.name }}</name>
-        <forward mode="open"/>
-        <bridge name="{{ item.name }}" stp="on" delay="0"/>
-        <dns>
-          <forwarder addr="{{ host_lan_ip }}"/>
-        </dns>
-        <ip address="{{ item.gateway }}" prefix="24">
-          <dhcp>
-      {% if item.dhcp_start is defined %}
-            <range start="{{ item.dhcp_start }}" end="{{ item.dhcp_end }}"/>
-      {% endif %}
-      {% for reservation in item.reservations | default([]) %}
-            <host mac="{{ reservation.mac }}" name="{{ reservation.name }}" ip="{{ reservation.address }}"/>
-      {% endfor %}
-          </dhcp>
-        </ip>
-      </network>
+    argv:
+      - virsh
+      - net-define
+      - /dev/stdin
+    stdin: "{{ lookup('ansible.builtin.template', 'network.xml.j2') }}"
   loop: "{{ networks }}"
   loop_control:
     label: "{{ item.name }}"
-  when: item.name not in existing_networks.stdout_lines
+  when: item.name not in defined_networks_result.stdout_lines
 
-- name: Read network status
+- name: Read libvirt network state and autostart settings
   ansible.builtin.command:
-    argv: [virsh, net-info, "{{ item.name }}"]
+    argv:
+      - virsh
+      - net-info
+      - "{{ item.name }}"
   loop: "{{ networks }}"
   loop_control:
     label: "{{ item.name }}"
-  register: network_status
+  register: network_info_results
   changed_when: false
   check_mode: false
 
 - name: Start networks
   ansible.builtin.command:
-    argv: [virsh, net-start, "{{ item.item.name }}"]
-  loop: "{{ network_status.results }}"
+    argv:
+      - virsh
+      - net-start
+      - "{{ item.item.name }}"
+  loop: "{{ network_info_results.results }}"
   loop_control:
     label: "{{ item.item.name }}"
   when: item.stdout is not regex('(?m)^Active:\\s+yes$')
 
 - name: Enable networks at boot
   ansible.builtin.command:
-    argv: [virsh, net-autostart, "{{ item.item.name }}"]
-  loop: "{{ network_status.results }}"
+    argv:
+      - virsh
+      - net-autostart
+      - "{{ item.item.name }}"
+  loop: "{{ network_info_results.results }}"
   loop_control:
     label: "{{ item.item.name }}"
   when: item.stdout is not regex('(?m)^Autostart:\\s+yes$')

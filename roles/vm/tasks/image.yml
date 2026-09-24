@@ -1,26 +1,12 @@
 ---
-- name: Read host SSH public key
-  ansible.builtin.slurp:
-    src: "/home/{{ admin_user }}/.ssh/id_ed25519.pub"
-  register: host_ssh_public_key_file
-
-- name: Set shared image facts
+- name: Set base image paths
   ansible.builtin.set_fact:
-    image_directory: "{{ storage_root }}/images"
-    base_image: "{{ storage_root }}/images/{{ image.name }}"
-    vm_ssh_public_key: "{{ host_ssh_public_key_file.content | b64decode | trim }}"
-    controller_ssh_public_key: "{{ lookup('ansible.builtin.file', '~/.ssh/id_ed25519.pub') | trim }}"
-
-- name: Check host SSH public key
-  ansible.builtin.assert:
-    that:
-      - vm_ssh_public_key is match('^ssh-(ed25519|rsa) ')
-      - controller_ssh_public_key is match('^ssh-(ed25519|rsa) ')
-    fail_msg: "Expected an SSH public key for {{ admin_user }} on host."
+    vm_image_directory: "{{ storage_root }}/images"
+    vm_base_image_path: "{{ storage_root }}/images/debian-12-genericcloud-amd64-20260909-2596.qcow2"
 
 - name: Create image directory
   ansible.builtin.file:
-    path: "{{ image_directory }}"
+    path: "{{ vm_image_directory }}"
     state: directory
     owner: root
     group: kvm
@@ -28,9 +14,9 @@
 
 - name: Download base image
   ansible.builtin.get_url:
-    url: "{{ image.url }}"
-    dest: "{{ base_image }}"
-    checksum: "sha512:{{ image.checksum }}"
+    url: https://cloud.debian.org/images/cloud/bookworm/20260909-2596/debian-12-genericcloud-amd64-20260909-2596.qcow2
+    dest: "{{ vm_base_image_path }}"
+    checksum: sha512:08fea112563461f251f3c95a5c5cf8cb25eb60f74cec03e85a97ff91d3efef3059d35837598bbb476008f20db6d3bdc7143c5f2f2a9a6da394a0acc601fd5986
     owner: root
     group: kvm
     mode: "0644"

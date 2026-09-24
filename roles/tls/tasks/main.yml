@@ -1,0 +1,50 @@
+---
+- name: Create project directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create certificate directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}/certs"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Generate certificate authority key and certificate
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      openssl genrsa -out ca.key 4096
+      openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
+        -subj "/CN=HomeLab Internal CA" -out ca.crt
+    chdir: "{{ compose_root }}/{{ project.name }}/certs"
+    creates: "{{ compose_root }}/{{ project.name }}/certs/ca.crt"
+
+- name: Generate server certificate signed by the certificate authority
+  vars:
+    certificate_san: "{{ project.certificate_domains | map('regex_replace', '^(.*)$', 'DNS:\\1') | join(',') }}"
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      openssl genrsa -out server.key 2048
+      printf 'subjectAltName={{ certificate_san }}\n' > ext.cnf
+      openssl req -new -key server.key -subj "/CN={{ project.certificate_domains[0] }}" \
+        -addext "subjectAltName={{ certificate_san }}" -out server.csr
+      openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
+        -days 1825 -sha256 -extfile ext.cnf -out server.crt
+      rm -f server.csr ext.cnf
+    chdir: "{{ compose_root }}/{{ project.name }}/certs"
+    creates: "{{ compose_root }}/{{ project.name }}/certs/server.crt"
+
+- name: Remove superseded wildcard certificate
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}/certs/{{ item }}"
+    state: absent
+  loop:
+    - wildcard.crt
+    - wildcard.key

@@ -1,7 +1,11 @@
 ---
 - name: Check Docker installation
   ansible.builtin.command:
-    argv: [docker, version, --format, "{{ '{{' }}.Server.Version{{ '}}' }}"]
+    argv:
+      - docker
+      - version
+      - --format
+      - "{{ '{{' }}.Server.Version{{ '}}' }}"
   register: docker_installation
   changed_when: false
   failed_when: false
@@ -35,7 +39,9 @@
 
 - name: Read package architecture
   ansible.builtin.command:
-    argv: [dpkg, --print-architecture]
+    argv:
+      - dpkg
+      - --print-architecture
   register: package_architecture
   changed_when: false
   when: docker_installation.rc != 0

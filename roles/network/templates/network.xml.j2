@@ -1,0 +1,18 @@
+<network>
+  <name>{{ item.name }}</name>
+  <forward mode="open"/>
+  <bridge name="{{ item.name }}" stp="on" delay="0"/>
+  <dns>
+    <forwarder addr="{{ host_lan_ip }}"/>
+  </dns>
+  <ip address="{{ item.gateway }}" prefix="24">
+    <dhcp>
+{% if item.dhcp_start is defined %}
+      <range start="{{ item.dhcp_start }}" end="{{ item.dhcp_end }}"/>
+{% endif %}
+{% for reservation in item.reservations | default([]) %}
+      <host mac="{{ reservation.mac }}" name="{{ reservation.name }}" ip="{{ reservation.address }}"/>
+{% endfor %}
+    </dhcp>
+  </ip>
+</network>

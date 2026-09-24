@@ -1,5 +1,6 @@
 ---
-ansible_user: "{{ admin_user }}"
 ansible_ssh_common_args: >-
   -o ProxyCommand="ssh -p {{ hostvars['host'].ansible_port }} {{ admin_user }}@{{ hostvars['host'].ansible_host }} nc %h %p"
-network_dns_server: 10.10.20.1
+vm_network: "{{ vm_definition.network }}"
+vm_mac: "{{ vm_definition.mac }}"
+compose_root: /opt/compose

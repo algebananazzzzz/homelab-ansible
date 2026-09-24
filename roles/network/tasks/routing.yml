@@ -1,8 +1,10 @@
 ---
 - name: Read IPv4 forwarding
   ansible.builtin.command:
-    argv: [cat, /proc/sys/net/ipv4/ip_forward]
-  register: ipv4_forwarding
+    argv:
+      - cat
+      - /proc/sys/net/ipv4/ip_forward
+  register: ipv4_forwarding_result
   changed_when: false
   check_mode: false
 
@@ -14,9 +16,12 @@
     owner: root
     group: root
     mode: "0644"
-  register: forwarding_config
+  register: forwarding_config_result
 
 - name: Enable IPv4 forwarding
   ansible.builtin.command:
-    argv: [/usr/sbin/sysctl, -p, /etc/sysctl.d/90-homelab-router.conf]
-  when: forwarding_config.changed or ipv4_forwarding.stdout != '1'
+    argv:
+      - /usr/sbin/sysctl
+      - -p
+      - /etc/sysctl.d/90-homelab-router.conf
+  when: forwarding_config_result.changed or ipv4_forwarding_result.stdout != '1'

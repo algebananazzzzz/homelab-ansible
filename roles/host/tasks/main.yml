@@ -36,7 +36,11 @@
 
 - name: Wait for host time synchronization
   ansible.builtin.command:
-    argv: [timedatectl, show, --property=NTPSynchronized, --value]
+    argv:
+      - timedatectl
+      - show
+      - --property=NTPSynchronized
+      - --value
   register: time_synchronized
   changed_when: false
   check_mode: false

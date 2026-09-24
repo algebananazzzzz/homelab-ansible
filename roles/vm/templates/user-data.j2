@@ -10,7 +10,7 @@ users:
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - {{ vm_ssh_public_key }}
+      - {{ host_ssh_public_key }}
       - {{ controller_ssh_public_key }}
 packages:
   - git

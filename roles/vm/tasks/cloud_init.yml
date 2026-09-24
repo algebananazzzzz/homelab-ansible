@@ -1,0 +1,54 @@
+---
+- name: Write cloud-init user data
+  ansible.builtin.template:
+    src: user-data.j2
+    dest: "{{ vm_directory }}/user-data"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: vm_user_data_result
+
+- name: Write cloud-init metadata
+  ansible.builtin.template:
+    src: meta-data.j2
+    dest: "{{ vm_directory }}/meta-data"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: vm_metadata_result
+
+- name: Write cloud-init network configuration
+  ansible.builtin.template:
+    src: network-config.j2
+    dest: "{{ vm_directory }}/network-config"
+    owner: root
+    group: kvm
+    mode: "0640"
+  register: vm_network_config_result
+
+- name: Check cloud-init seed ISO
+  ansible.builtin.stat:
+    path: "{{ vm_cloud_init_iso_path }}"
+  register: vm_cloud_init_iso_stat
+
+- name: Build cloud-init seed ISO
+  ansible.builtin.command:
+    argv:
+      - genisoimage
+      - -output
+      - "{{ vm_cloud_init_iso_path }}"
+      - -volid
+      - cidata
+      - -joliet
+      - -rock
+      - "{{ vm_directory }}/user-data"
+      - "{{ vm_directory }}/meta-data"
+      - "{{ vm_directory }}/network-config"
+  when: vm_user_data_result.changed or vm_metadata_result.changed or vm_network_config_result.changed or not vm_cloud_init_iso_stat.stat.exists
+
+- name: Set cloud-init seed ISO permissions
+  ansible.builtin.file:
+    path: "{{ vm_cloud_init_iso_path }}"
+    owner: root
+    group: kvm
+    mode: "0640"

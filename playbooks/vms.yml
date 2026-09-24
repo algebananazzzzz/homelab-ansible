@@ -2,7 +2,7 @@
 - import_playbook: infrastructure.yml
 
 - name: Create virtual machines
-  hosts: hypervisors
+  hosts: hypervisor
   gather_facts: false
   become: true
 

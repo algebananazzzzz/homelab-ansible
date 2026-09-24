@@ -4,8 +4,9 @@ service {
   port = 5173
   tags = [
     "traefik.enable=true",
-    "traefik.http.routers.kaneo.entrypoints=web",
-    "traefik.http.routers.kaneo.rule=Host(`kaneo.home.arpa`)",
+    "traefik.http.routers.kaneo.entrypoints=web,websecure",
+    "traefik.http.routers.kaneo.rule=Host(`kaneo.svc.home.arpa`)",
+    "traefik.http.routers.kaneo.tls=true",
     "traefik.http.services.kaneo.loadbalancer.server.port=5173"
   ]
   check {
