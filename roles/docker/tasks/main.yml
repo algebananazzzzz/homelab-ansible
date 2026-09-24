@@ -41,6 +41,13 @@
     mode: "0700"
   when: selected_projects | map(attribute='secrets', default=[]) | flatten | length > 0
 
+- name: Require static service secrets
+  ansible.builtin.assert:
+    that:
+      - static_secret_values[item] | length > 0
+    fail_msg: "{{ item | upper }} is empty. Set it in the environment, for example by sourcing .env."
+  loop: "{{ selected_projects | map(attribute='secrets', default=[]) | flatten | unique | intersect(static_secret_values.keys() | list) }}"
+
 - name: Generate static service secrets
   ansible.builtin.copy:
     content: "{{ static_secret_values[item] }}"
