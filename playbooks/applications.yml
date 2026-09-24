@@ -14,12 +14,12 @@
         all_project_names: "{{ groups['applications'] | map('extract', hostvars, 'compose_projects') | flatten | map(attribute='name') | unique | list }}"
 
 # Kaneo and Outline read the OIDC client secrets that the Authelia role writes.
-- name: Prepare Authelia
+- name: Deploy Authelia
   hosts: authelia
   become: true
 
   roles:
-    - authelia
+    - applications/authelia
 
 - name: Deploy applications
   hosts: applications

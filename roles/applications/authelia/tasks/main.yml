@@ -1,7 +1,7 @@
 ---
 - name: Read Authelia image from its Compose file
   ansible.builtin.set_fact:
-    authelia_image: "{{ (lookup('ansible.builtin.file', compose_source ~ '/authelia/compose.yml') | from_yaml).services.authelia.image }}"
+    authelia_image: "{{ (lookup('ansible.builtin.file', 'compose.yml') | from_yaml).services.authelia.image }}"
 
 - name: Create Authelia project directory
   ansible.builtin.file:
@@ -115,3 +115,80 @@
     authelia_user_password_hash: "{{ (oidc_artifacts.results[1].content | b64decode) | trim }}"
     authelia_client_secret_hashes: >-
       {{ dict(authelia_oidc_clients | map(attribute='id') | zip(oidc_client_hashes.results | map(attribute='content') | map('b64decode') | map('trim'))) }}
+
+- name: Write Authelia secrets
+  ansible.builtin.include_role:
+    name: applications/compose
+    tasks_from: secrets
+  vars:
+    secret_names:
+      - authelia_session_secret
+      - authelia_storage_encryption_key
+      - authelia_jwt_secret
+      - authelia_oidc_hmac_secret
+      - postgres_password
+      - redis_password
+
+- name: Write Authelia environment file
+  ansible.builtin.include_role:
+    name: applications/compose
+    tasks_from: environment
+  vars:
+    project:
+      name: authelia
+      secret_environment:
+        SESSION_SECRET: authelia_session_secret
+        STORAGE_ENCRYPTION_KEY: authelia_storage_encryption_key
+        JWT_SECRET: authelia_jwt_secret
+        OIDC_HMAC_SECRET: authelia_oidc_hmac_secret
+        POSTGRES_PASSWORD: postgres_password
+        REDIS_PASSWORD: redis_password
+
+- name: Create Authelia config directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/authelia/config"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write Authelia Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/authelia/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Write Authelia configuration
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ compose_root }}/authelia/config/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - configuration.yml
+    - users_database.yml
+  register: authelia_configuration
+
+- name: Start Authelia
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/authelia"
+    remove_orphans: true
+    wait: true
+    # Authelia reads its configuration only at startup.
+    recreate: "{{ 'always' if authelia_configuration.changed else 'auto' }}"
+
+- name: Register Authelia with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: authelia
+      port: 9091
+      hostnames:
+        - auth.home.arpa
+        - "{{ public_hostnames.auth }}"
+      health_path: /api/health

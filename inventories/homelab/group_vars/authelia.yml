@@ -1,0 +1,8 @@
+---
+authelia_oidc_clients:
+  - id: outline
+    name: Outline
+    redirect_uri: "https://{{ public_hostnames.outline }}/auth/oidc.callback"
+  - id: kaneo
+    name: Kaneo
+    redirect_uri: "https://{{ public_hostnames.kaneo }}/api/auth/oauth2/callback/custom"
