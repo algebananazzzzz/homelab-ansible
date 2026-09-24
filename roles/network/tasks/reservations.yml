@@ -1,4 +1,24 @@
 ---
+- name: Check reservations are unique
+  ansible.builtin.assert:
+    that:
+      - vms | map(attribute='mac') | map('lower') | list | length == vms | map(attribute='mac') | map('lower') | unique | list | length
+      - reserved | map(attribute='address') | list | length == reserved | map(attribute='address') | unique | list | length
+    fail_msg: Two VMs share a MAC address or a reserved IP address.
+  vars:
+    reserved: "{{ networks | subelements('reservations', skip_missing=true) | map(attribute='1') | list }}"
+
+# The network template hardcodes a /24 around the gateway.
+- name: Check reservations are inside their networks
+  ansible.builtin.assert:
+    that:
+      - item.1.address.split('.')[:3] == item.0.gateway.split('.')[:3]
+      - item.1.address != item.0.gateway
+    fail_msg: "{{ item.1.name }} has {{ item.1.address }}, which is not a host address in {{ item.0.name }} ({{ item.0.gateway }}/24)."
+  loop: "{{ networks | subelements('reservations', skip_missing=true) }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.name }}"
+
 # net-define skips networks that already exist, so reservations added later must be pushed into the live network.
 # --live needs a running network, so this runs after bridges.yml has started them.
 - name: Add missing DHCP reservations
