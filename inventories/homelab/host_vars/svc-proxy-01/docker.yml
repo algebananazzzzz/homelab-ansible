@@ -1,5 +1,0 @@
----
-compose_projects:
-  - name: cloudflared
-    templated_files:
-      - config/config.yml

@@ -1,0 +1,8 @@
+---
+- name: Publish public hostnames through the Cloudflare tunnel
+  hosts: cloudflared
+  gather_facts: false
+  become: true
+
+  roles:
+    - tunnel/cloudflared

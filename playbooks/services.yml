@@ -21,14 +21,6 @@
   roles:
     - compose
 
-- name: Deploy edge services
-  hosts: svc-proxy-01
-  become: true
-
-  roles:
-    - cloudflare_tunnel
-    - compose
-
 - name: Deploy applications
   hosts: svc-apps-01
   become: true

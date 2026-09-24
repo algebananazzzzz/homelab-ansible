@@ -59,3 +59,44 @@
   loop: "{{ public_hostnames.values() | list }}"
   loop_control:
     loop_var: hostname
+
+- name: Create cloudflared directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/cloudflared"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create cloudflared config directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/cloudflared/config"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write cloudflared Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/cloudflared/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Write cloudflared configuration
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ compose_root }}/cloudflared/config/config.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: cloudflared_configuration
+
+- name: Start cloudflared
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/cloudflared"
+    remove_orphans: true
+    wait: true
+    # The configuration is a bind-mounted file, which Compose does not track.
+    recreate: "{{ 'always' if cloudflared_configuration.changed else 'auto' }}"
