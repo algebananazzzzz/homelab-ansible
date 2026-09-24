@@ -36,7 +36,6 @@
   become: true
 
   roles:
-    - docker_engine
     - compose
 
 - name: Deploy data services
@@ -44,7 +43,6 @@
   become: true
 
   roles:
-    - docker_engine
     - compose
     - databases
 
@@ -53,7 +51,6 @@
   become: true
 
   roles:
-    - docker_engine
     - cloudflare_tunnel
     - compose
 
@@ -62,7 +59,6 @@
   become: true
 
   roles:
-    - docker_engine
     - authelia
     - compose
 
@@ -71,5 +67,4 @@
   become: true
 
   roles:
-    - docker_engine
     - compose

@@ -1,9 +1,4 @@
 ---
-- name: Validate host
-  ansible.builtin.import_tasks: preflight.yml
-  tags:
-    - preflight
-
 - name: Create host SSH directory
   ansible.builtin.file:
     path: "/home/{{ admin_user }}/.ssh"

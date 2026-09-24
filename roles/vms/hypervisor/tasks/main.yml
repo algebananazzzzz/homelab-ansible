@@ -1,0 +1,55 @@
+---
+- name: Validate hypervisor
+  ansible.builtin.import_tasks: preflight.yml
+  tags:
+    - host
+    - preflight
+
+- name: Prepare hypervisor
+  ansible.builtin.import_tasks: host.yml
+  tags:
+    - host
+
+- name: Configure bridges and DHCP
+  ansible.builtin.import_tasks: bridges.yml
+  tags:
+    - network
+    - bridges
+
+- name: Configure DHCP reservations
+  ansible.builtin.import_tasks: reservations.yml
+  tags:
+    - network
+    - reservations
+
+- name: Configure routing
+  ansible.builtin.import_tasks: routing.yml
+  tags:
+    - network
+    - routing
+
+- name: Configure NAT
+  ansible.builtin.import_tasks: nat.yml
+  tags:
+    - network
+    - nat
+
+- name: Prepare SSH access to guests
+  ansible.builtin.import_tasks: ssh.yml
+  tags:
+    - vm
+
+- name: Prepare shared image
+  ansible.builtin.import_tasks: image.yml
+  tags:
+    - vm
+    - image
+
+- name: Provision selected VMs
+  ansible.builtin.include_tasks: instance.yml
+  loop: "{{ selected_vms }}"
+  loop_control:
+    loop_var: vm
+    label: "{{ vm.name }}"
+  tags:
+    - vm

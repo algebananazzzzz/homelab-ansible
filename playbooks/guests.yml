@@ -1,8 +1,0 @@
----
-- name: Prepare virtual machines
-  hosts: vm
-  gather_facts: false
-  become: true
-
-  roles:
-    - guest

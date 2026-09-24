@@ -1,7 +1,7 @@
 ---
-- name: Create virtual machines
+- name: Prepare hypervisor and create VMs
   hosts: hypervisor
-  gather_facts: false
+  gather_facts: true
   become: true
 
   vars:
@@ -15,7 +15,7 @@
           - selected_vms | length == selected_vm_names | length
         fail_msg: One or more requested VM names do not exist in vms.
       tags:
-        - always
+        - vm
 
     - name: Require an explicit VM list when limiting hosts
       ansible.builtin.assert:
@@ -23,12 +23,17 @@
           - vm_names is defined or ansible_limit is not defined
         fail_msg: >-
           --limit does not narrow which VMs are created, so every VM in vms is provisioned.
-          Pass -e '{"vm_names": ["<name>"]}' to select VMs.
-      tags:
-        - always
-
-  roles:
-    - role: vm
+          Pass -e '{"vm_names": ["<name>"]}' to select VMs, or --tags host,network to skip VM creation.
       tags:
         - vm
 
+  roles:
+    - vms/hypervisor
+
+- name: Prepare VMs
+  hosts: vm
+  gather_facts: false
+  become: true
+
+  roles:
+    - vms/guest

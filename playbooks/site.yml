@@ -1,8 +1,6 @@
 ---
 # Each playbook depends on the ones above it.
-- import_playbook: infrastructure.yml
 - import_playbook: vms.yml
-- import_playbook: guests.yml
 - import_playbook: services.yml
 - import_playbook: management.yml
 - import_playbook: monitoring.yml
