@@ -12,7 +12,7 @@ ansible-playbook playbooks/infrastructure.yml
 ansible-playbook playbooks/infrastructure.yml --tags network
 ```
 
-Host settings live in `inventories/homelab/host_vars/host/network.yml`. Guest DNS configuration runs through the VM and Docker playbooks when `network_dns_server` is defined.
+Host settings live in `inventories/homelab/host_vars/hv-01/network.yml`. Guest DNS configuration runs through the VM and Docker playbooks when `network_dns_server` is defined.
 
 ## Libvirt networks and bridges
 

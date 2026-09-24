@@ -1,9 +1,11 @@
 ---
-host_uplink_interface: eth0
-host_lan_address: 192.168.50.39/24
-host_home_cidr: 192.168.50.0/24
-host_internal_cidr: 10.10.0.0/16
-host_lan_ip: "{{ host_lan_address.split('/')[0] }}"
+uplink_interface: eth0
+lan_address: 192.168.50.39/24
+home_cidr: 192.168.50.0/24
+internal_cidr: 10.10.0.0/16
+lan_ip: "{{ lan_address.split('/')[0] }}"
+
+vms: "{{ groups['vm'] | map('extract', hostvars, 'vm_definition') | list }}"
 
 networks:
   - name: br-mgmt

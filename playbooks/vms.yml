@@ -50,8 +50,8 @@
           - StrictHostKeyChecking=accept-new
           - -o
           - >-
-            ProxyCommand=ssh -p {{ hostvars['host'].ansible_port }}
-            {{ admin_user }}@{{ hostvars['host'].ansible_host }} nc %h %p
+            ProxyCommand=ssh -p {{ hostvars[hypervisor_host].ansible_port }}
+            {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p
           - "{{ admin_user }}@{{ ansible_host }}"
           - "true"
       delegate_to: localhost

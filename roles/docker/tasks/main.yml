@@ -92,7 +92,7 @@
 - name: Trust internal certificate authority
   ansible.builtin.include_role:
     name: ca_trust
-  when: inventory_hostname in groups['internal_ca_trust_hosts']
+  when: inventory_hostname in groups['vm']
 
 - name: Write project environment files
   ansible.builtin.include_tasks: environment.yml

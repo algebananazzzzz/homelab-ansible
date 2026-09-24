@@ -3,7 +3,7 @@
   <forward mode="open"/>
   <bridge name="{{ item.name }}" stp="on" delay="0"/>
   <dns>
-    <forwarder addr="{{ host_lan_ip }}"/>
+    <forwarder addr="{{ lan_ip }}"/>
   </dns>
   <ip address="{{ item.gateway }}" prefix="24">
     <dhcp>

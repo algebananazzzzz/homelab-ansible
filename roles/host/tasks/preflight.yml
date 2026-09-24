@@ -2,7 +2,7 @@
 - name: Check host identity
   ansible.builtin.assert:
     that:
-      - ansible_facts.hostname == host_expected_hostname
+      - ansible_facts.hostname == hostname
       - ansible_facts.distribution == "Debian"
       - ansible_facts.distribution_major_version == "12"
     fail_msg: Refusing to manage an unexpected host.
@@ -16,16 +16,16 @@
       - address
       - show
       - dev
-      - "{{ host_uplink_interface }}"
-  register: lan_address
+      - "{{ uplink_interface }}"
+  register: uplink_addresses
   changed_when: false
   check_mode: false
 
 - name: Check LAN address
   ansible.builtin.assert:
     that:
-      - host_lan_address in lan_address.stdout
-    fail_msg: "Expected {{ host_lan_address }} on {{ host_uplink_interface }}."
+      - lan_address in uplink_addresses.stdout
+    fail_msg: "Expected {{ lan_address }} on {{ uplink_interface }}."
 
 - name: Check required tools
   ansible.builtin.command:

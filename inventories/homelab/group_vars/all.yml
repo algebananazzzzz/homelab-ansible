@@ -1,6 +1,7 @@
 ---
 admin_user: song
 ansible_user: "{{ admin_user }}"
+hypervisor_host: "{{ groups['hypervisor'] | first }}"
 static_secret_values:
   postgres_password: "{{ lookup('ansible.builtin.env', 'POSTGRES_PASSWORD') }}"
   redis_password: "{{ lookup('ansible.builtin.env', 'REDIS_PASSWORD') }}"

@@ -1,13 +1,13 @@
 table ip homelab_nat {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
-        ip saddr {{ host_internal_cidr }} ip daddr != {{ host_home_cidr }} oifname "{{ host_uplink_interface }}" masquerade
+        ip saddr {{ internal_cidr }} ip daddr != {{ home_cidr }} oifname "{{ uplink_interface }}" masquerade
     }
 
     # libvirt's per-bridge dnsmasq forwards to the host LAN address; send that to Pi-hole on mgmt-01.
     chain output {
         type nat hook output priority -100; policy accept;
-        ip daddr {{ host_lan_ip }} udp dport 53 dnat to {{ hostvars['mgmt-01'].ansible_host }}
-        ip daddr {{ host_lan_ip }} tcp dport 53 dnat to {{ hostvars['mgmt-01'].ansible_host }}
+        ip daddr {{ lan_ip }} udp dport 53 dnat to {{ hostvars['mgmt-01'].ansible_host }}
+        ip daddr {{ lan_ip }} tcp dport 53 dnat to {{ hostvars['mgmt-01'].ansible_host }}
     }
 }

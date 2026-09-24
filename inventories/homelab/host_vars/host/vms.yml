@@ -1,2 +1,0 @@
----
-vms: "{{ groups['vm'] | map('extract', hostvars, 'vm_definition') | list }}"

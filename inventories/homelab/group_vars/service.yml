@@ -1,2 +1,2 @@
 ---
-network_dns_server: "{{ (hostvars['host'].networks | selectattr('name', 'equalto', vm_network) | first).gateway }}"
+network_dns_server: "{{ (hostvars[hypervisor_host].networks | selectattr('name', 'equalto', vm_network) | first).gateway }}"
