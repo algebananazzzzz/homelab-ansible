@@ -53,7 +53,7 @@
 
 - name: Register PostgreSQL with Consul
   ansible.builtin.include_role:
-    name: management/consul
+    name: core/consul
     tasks_from: register
   vars:
     consul_service:

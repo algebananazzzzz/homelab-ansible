@@ -6,7 +6,7 @@
   become: true
 
   roles:
-    - management/pihole
+    - core/pihole
 
 - name: Deploy Consul server
   hosts: consul_server
@@ -14,7 +14,7 @@
   become: true
 
   roles:
-    - management/consul
+    - core/consul
 
 - name: Deploy Consul agents
   hosts: vm:!consul_server
@@ -22,7 +22,7 @@
   become: true
 
   roles:
-    - management/consul
+    - core/consul
 
 - name: Configure Tailscale
   hosts: tailscale
@@ -30,4 +30,4 @@
   become: true
 
   roles:
-    - management/tailscale
+    - core/tailscale
