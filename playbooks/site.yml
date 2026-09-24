@@ -4,6 +4,6 @@
 - import_playbook: management.yml
 - import_playbook: observability.yml
 - import_playbook: databases.yml
-- import_playbook: home_tls.yml
+- import_playbook: proxy.yml
 - import_playbook: tunnel.yml
 - import_playbook: applications.yml

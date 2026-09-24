@@ -5,8 +5,8 @@
   become: true
 
   roles:
-    - home_tls/internal_ca
-    - home_tls/traefik
+    - proxy/internal_ca
+    - proxy/traefik
 
 - name: Trust the internal certificate authority
   hosts: vm
@@ -16,5 +16,5 @@
   tasks:
     - name: Install the internal CA
       ansible.builtin.include_role:
-        name: home_tls/internal_ca
+        name: proxy/internal_ca
         tasks_from: trust

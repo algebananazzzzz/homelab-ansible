@@ -7,5 +7,5 @@
   tasks:
     - name: Install the internal CA
       ansible.builtin.include_role:
-        name: home_tls/internal_ca
+        name: proxy/internal_ca
         tasks_from: trust
