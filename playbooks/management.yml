@@ -1,8 +1,24 @@
 ---
-- name: Configure management host
-  hosts: management
+- name: Deploy Consul server
+  hosts: consul_server
+  gather_facts: false
+  become: true
+
+  roles:
+    - management/consul
+
+- name: Deploy Consul agents
+  hosts: vm:!consul_server
+  gather_facts: false
+  become: true
+
+  roles:
+    - management/consul
+
+- name: Configure Tailscale
+  hosts: tailscale
   gather_facts: true
   become: true
 
   roles:
-    - management
+    - management/tailscale

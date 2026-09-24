@@ -1,0 +1,22 @@
+---
+- name: Create Consul server directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/consul"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write Consul server Compose file
+  ansible.builtin.copy:
+    src: server-compose.yml
+    dest: "{{ compose_root }}/consul/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Consul server
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/consul"
+    remove_orphans: true
+    wait: true

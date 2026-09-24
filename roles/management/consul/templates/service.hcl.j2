@@ -1,0 +1,25 @@
+service {
+  id   = "{{ consul_service.name }}"
+  name = "{{ consul_service.name }}"
+  port = {{ consul_service.port }}
+{% if consul_service.hostnames is defined %}
+  tags = [
+    "traefik.enable=true",
+    "traefik.http.routers.{{ consul_service.name }}.entrypoints=web,websecure",
+    "traefik.http.routers.{{ consul_service.name }}.rule={{ consul_service.hostnames | map('regex_replace', '^(.*)$', 'Host(`\\1`)') | join(' || ') }}",
+    "traefik.http.routers.{{ consul_service.name }}.tls=true",
+    "traefik.http.services.{{ consul_service.name }}.loadbalancer.server.port={{ consul_service.port }}"
+  ]
+{% endif %}
+  check {
+{% if consul_service.health_path is defined %}
+    http     = "http://127.0.0.1:{{ consul_service.port }}{{ consul_service.health_path }}"
+    interval = "10s"
+    timeout  = "5s"
+{% else %}
+    tcp      = "127.0.0.1:{{ consul_service.port }}"
+    interval = "10s"
+    timeout  = "2s"
+{% endif %}
+  }
+}

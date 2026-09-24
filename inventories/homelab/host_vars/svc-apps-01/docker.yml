@@ -8,14 +8,6 @@ authelia_oidc_clients:
     redirect_uri: "https://{{ public_hostnames.kaneo }}/api/auth/oauth2/callback/custom"
 
 compose_projects:
-  - name: consul-agent
-    prune_config: true
-    files:
-      - config/beaverhabits.hcl
-    templated_files:
-      - config/kaneo.hcl
-      - config/authelia.hcl
-      - config/outline.hcl
   - name: kaneo
     environment:
       KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"

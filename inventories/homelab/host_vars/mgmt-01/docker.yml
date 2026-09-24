@@ -1,10 +1,5 @@
 ---
 compose_projects:
-  - name: consul-agent
-    prune_config: true
-    files:
-      - config/prometheus.hcl
-      - config/glance.hcl
   - name: pihole
     environment:
       BASE_DOMAIN: "{{ base_domain }}"

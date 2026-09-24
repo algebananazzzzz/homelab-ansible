@@ -1,0 +1,31 @@
+---
+- name: Create Consul agent directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/consul-agent"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+# Other roles add service definitions here through register.yml.
+- name: Create Consul agent config directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/consul-agent/config"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write Consul agent Compose file
+  ansible.builtin.copy:
+    src: agent-compose.yml
+    dest: "{{ compose_root }}/consul-agent/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Consul agent
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/consul-agent"
+    remove_orphans: true
+    wait: true

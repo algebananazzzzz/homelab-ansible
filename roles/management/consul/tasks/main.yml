@@ -1,0 +1,8 @@
+---
+- name: Deploy Consul server
+  ansible.builtin.import_tasks: server.yml
+  when: inventory_hostname in groups['consul_server']
+
+- name: Deploy Consul agent
+  ansible.builtin.import_tasks: agent.yml
+  when: inventory_hostname not in groups['consul_server']

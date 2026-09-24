@@ -1,0 +1,19 @@
+---
+- name: "Write Consul definition for {{ consul_service.name }}"
+  ansible.builtin.template:
+    src: service.hcl.j2
+    dest: "{{ compose_root }}/consul-agent/config/{{ consul_service.name }}.hcl"
+    owner: root
+    group: root
+    mode: "0644"
+  register: consul_definition
+
+- name: "Reload Consul agent for {{ consul_service.name }}"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - consul-agent
+      - consul
+      - reload
+  when: consul_definition.changed

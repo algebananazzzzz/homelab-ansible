@@ -1,11 +1,5 @@
 ---
 compose_projects:
-  - name: consul-agent
-    prune_config: true
-    files:
-      - config/postgres.hcl
-      - config/redis.hcl
-      - config/mongo.hcl
   - name: postgres
     secrets:
       - postgres_password

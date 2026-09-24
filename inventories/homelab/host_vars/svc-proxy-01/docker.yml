@@ -1,7 +1,6 @@
 ---
 tls_directory: "{{ compose_root }}/traefik/certs"
 compose_projects:
-  - name: consul
   - name: traefik
     # The certificates are bind-mounted, so Compose cannot see them change.
     # Undefined when the tls play did not run for this host, so nothing changed.
