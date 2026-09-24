@@ -92,6 +92,7 @@
       - prefs
   register: tailscale_preferences
   changed_when: false
+  check_mode: false
 
 - name: Advertise homelab routes
   ansible.builtin.command:
