@@ -38,10 +38,6 @@
   roles:
     - compose
 
-- name: Deploy data services
-  hosts: svc-db-01
-  become: true
-
   roles:
     - compose
     - databases

@@ -1,0 +1,24 @@
+---
+- name: Deploy PostgreSQL
+  hosts: postgres
+  gather_facts: false
+  become: true
+
+  roles:
+    - databases/postgres
+
+- name: Deploy Redis
+  hosts: redis
+  gather_facts: false
+  become: true
+
+  roles:
+    - databases/redis
+
+- name: Deploy MongoDB
+  hosts: mongo
+  gather_facts: false
+  become: true
+
+  roles:
+    - databases/mongo

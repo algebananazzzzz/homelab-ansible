@@ -1,0 +1,61 @@
+---
+- name: Require the PostgreSQL password
+  ansible.builtin.assert:
+    that:
+      - env_secrets.postgres_password | length > 0
+    fail_msg: POSTGRES_PASSWORD is empty. Set it in the environment, for example by sourcing .env.
+
+- name: Write the PostgreSQL password
+  ansible.builtin.copy:
+    content: "{{ env_secrets.postgres_password }}"
+    dest: "{{ compose_root }}/secrets/postgres_password"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Create PostgreSQL directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/postgres"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write PostgreSQL Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/postgres/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start PostgreSQL
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/postgres"
+    remove_orphans: true
+    wait: true
+
+- name: "Create PostgreSQL database {{ item }}"
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      password=$(cat {{ compose_root }}/secrets/postgres_password)
+      if docker exec -e PGPASSWORD="$password" postgres psql -U {{ postgres_admin_user }} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ item }}'" | grep -q 1; then
+        exit 0
+      fi
+      docker exec -e PGPASSWORD="$password" postgres psql -U {{ postgres_admin_user }} -d postgres -c "CREATE DATABASE {{ item }}"
+      echo changed
+  loop: "{{ postgres_databases }}"
+  register: postgres_database
+  changed_when: postgres_database.stdout_lines | last | default('') == 'changed'
+  no_log: true
+
+- name: Register PostgreSQL with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: postgres
+      port: 5432

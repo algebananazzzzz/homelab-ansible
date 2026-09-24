@@ -1,0 +1,46 @@
+---
+- name: Require the Redis password
+  ansible.builtin.assert:
+    that:
+      - env_secrets.redis_password | length > 0
+    fail_msg: REDIS_PASSWORD is empty. Set it in the environment, for example by sourcing .env.
+
+- name: Write the Redis password
+  ansible.builtin.copy:
+    content: "{{ env_secrets.redis_password }}"
+    dest: "{{ compose_root }}/secrets/redis_password"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Create Redis directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/redis"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write Redis Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/redis/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Redis
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/redis"
+    remove_orphans: true
+    wait: true
+
+- name: Register Redis with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: redis
+      port: 6379

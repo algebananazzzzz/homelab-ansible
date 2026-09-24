@@ -1,0 +1,31 @@
+---
+- name: Create MongoDB directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/mongo"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write MongoDB Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/mongo/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start MongoDB
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/mongo"
+    remove_orphans: true
+    wait: true
+
+- name: Register MongoDB with Consul
+  ansible.builtin.include_role:
+    name: management/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: mongo
+      port: 27017
