@@ -1,0 +1,36 @@
+- name: Monitoring
+  columns:
+    - size: full
+      widgets:
+        - type: custom-api
+          title: Containers by node
+          cache: 30s
+          url: https://prometheus.ops.home.arpa/api/v1/query
+          parameters:
+            query: up{job="node"}
+          template: |
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+            {{ range .JSON.Array "data.result" }}
+              {{ $host := .String "metric.instance_name" }}
+              <div>
+                <p class="size-h4 color-highlight">{{ $host }}</p>
+                {{ if eq (.String "value.1") "0" }}
+                  <p class="color-negative">Node exporter unavailable</p>
+                {{ else }}
+                  {{ $containersQuery := concat "topk(20, sum by (name) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",instance_name=\"" $host "\",name!=\"\",name!=\"cadvisor\"}[5m])) * 100)" }}
+                  {{ $containers := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $containersQuery | getResponse }}
+                  <div style="display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: .4rem;">
+                    <span class="color-subdue">Container</span><span class="color-subdue">CPU</span><span class="color-subdue">Mem</span><span class="color-subdue">Disk</span>
+                    {{ range $containers.JSON.Array "data.result" }}
+                      {{ $container := .String "metric.name" }}
+                      {{ $memoryQuery := concat "container_memory_working_set_bytes{job=\"cadvisor\",instance_name=\"" $host "\",name=\"" $container "\"} / 1024 / 1024" }}
+                      {{ $diskQuery := concat "container_fs_usage_bytes{job=\"cadvisor\",instance_name=\"" $host "\",name=\"" $container "\"} / 1024 / 1024" }}
+                      {{ $memory := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $memoryQuery | getResponse }}
+                      {{ $disk := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $diskQuery | getResponse }}
+                      <span>{{ $container }}</span><span>{{ printf "%.1f" (.Float "value.1") }}%</span><span>{{ printf "%.0f" ($memory.JSON.Float "data.result.0.value.1") }} MB</span><span>{{ printf "%.0f" ($disk.JSON.Float "data.result.0.value.1") }} MB</span>
+                    {{ end }}
+                  </div>
+                {{ end }}
+              </div>
+            {{ end }}
+            </div>

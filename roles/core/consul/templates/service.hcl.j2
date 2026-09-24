@@ -8,6 +8,9 @@ service {
     "traefik.http.routers.{{ consul_service.name }}.entrypoints=web,websecure",
     "traefik.http.routers.{{ consul_service.name }}.rule={{ consul_service.hostnames | map('regex_replace', '^(.*)$', 'Host(`\\1`)') | join(' || ') }}",
     "traefik.http.routers.{{ consul_service.name }}.tls=true",
+{% if consul_service.middlewares is defined %}
+    "traefik.http.routers.{{ consul_service.name }}.middlewares={{ consul_service.middlewares }}",
+{% endif %}
     "traefik.http.services.{{ consul_service.name }}.loadbalancer.server.port={{ consul_service.port }}"
   ]
 {% endif %}

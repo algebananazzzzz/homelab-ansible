@@ -10,6 +10,7 @@ public_hostnames:
   auth: "auth.{{ base_domain }}"
   kaneo: "kaneo.{{ base_domain }}"
   outline: "outline.{{ base_domain }}"
+  glance: "glance.{{ base_domain }}"
 
 tls_certificate_domains:
   - home.arpa

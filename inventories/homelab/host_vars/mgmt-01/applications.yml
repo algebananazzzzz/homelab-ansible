@@ -2,12 +2,24 @@
 compose_projects:
   - name: glance
     consul:
-      port: 8090
-      hostnames:
-        - home.arpa
-      health_path: /
+      - port: 8090
+        hostnames:
+          - home.arpa
+        health_path: /
+      - name: glance-public
+        port: 8091
+        hostnames:
+          - "{{ public_hostnames.glance }}"
+        middlewares: authelia@file
+        health_path: /
     environment:
       KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
       OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"
+      AUTH_HOSTNAME: "{{ public_hostnames.auth }}"
     files:
       - config/glance.yml
+      - config/public.yml
+      - config/shared/base.yml
+      - config/shared/sidebar.yml
+      - config/shared/nodes.yml
+      - config/shared/monitoring.yml

@@ -76,5 +76,8 @@
     name: core/consul
     tasks_from: register
   vars:
-    consul_service: "{{ {'name': project.name} | combine(project.consul) }}"
-  when: project.consul is defined
+    consul_service: "{{ {'name': project.name} | combine(service) }}"
+  loop: "{{ project.consul | default([]) }}"
+  loop_control:
+    loop_var: service
+    label: "{{ service.name | default(project.name) }}"

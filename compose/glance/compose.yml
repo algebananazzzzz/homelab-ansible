@@ -1,19 +1,31 @@
 name: glance
 
+x-glance: &glance
+  image: glanceapp/glance:latest
+  environment:
+    TZ: Asia/Singapore
+    # Glance substitutes these into its config itself.
+    KANEO_HOSTNAME: ${KANEO_HOSTNAME}
+    OUTLINE_HOSTNAME: ${OUTLINE_HOSTNAME}
+    AUTH_HOSTNAME: ${AUTH_HOSTNAME}
+  dns:
+    - 10.10.10.10
+  volumes:
+    - ./config:/app/config:ro
+    - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
+  restart: unless-stopped
+
 services:
   glance:
+    <<: *glance
     container_name: glance
-    image: glanceapp/glance:latest
-    environment:
-      TZ: Asia/Singapore
-      # Glance substitutes these into glance.yml itself.
-      KANEO_HOSTNAME: ${KANEO_HOSTNAME}
-      OUTLINE_HOSTNAME: ${OUTLINE_HOSTNAME}
-    dns:
-      - 10.10.10.10
     ports:
       - "8090:8080/tcp"
-    volumes:
-      - ./config/glance.yml:/app/config/glance.yml:ro
-      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
-    restart: unless-stopped
+
+  glance-public:
+    <<: *glance
+    container_name: glance-public
+    # The image's entrypoint pins the config path, so this is the only way to pick another file.
+    entrypoint: ["/app/glance", "--config", "/app/config/public.yml"]
+    ports:
+      - "8091:8080/tcp"

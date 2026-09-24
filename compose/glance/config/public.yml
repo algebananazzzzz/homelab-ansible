@@ -1,0 +1,65 @@
+# Served through the Cloudflare tunnel, so it links only to hostnames that are published there.
+$include: shared/base.yml
+
+# Only the viewer's browser knows whether it is on the tailnet, so the Glance server cannot run this check.
+# A no-cors fetch rejects when home.arpa fails to resolve or connect, and resolves otherwise.
+document:
+  head: |
+    <script>
+      new MutationObserver((mutations, observer) => {
+        const link = document.querySelector('a[href="https://home.arpa"]');
+        if (!link) return;
+        observer.disconnect();
+        const status = link.closest('li').querySelector('.margin-bottom-5');
+        fetch('https://home.arpa/', { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(5000) })
+          .then(() => {
+            status.textContent = 'Reachable';
+            status.className = 'margin-bottom-5 color-positive';
+          })
+          .catch(() => {
+            status.textContent = 'Not reachable, connect to Tailscale first';
+            status.className = 'margin-bottom-5 color-negative';
+          });
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    </script>
+
+pages:
+  - name: Home
+    columns:
+      - size: small
+        widgets:
+          $include: shared/sidebar.yml
+
+      - size: full
+        widgets:
+          - type: monitor
+            title: Services
+            cache: 30s
+            sites:
+              - title: Kaneo
+                url: https://${KANEO_HOSTNAME}
+                icon: https://${KANEO_HOSTNAME}/favicon.ico
+              - title: Outline
+                url: https://${OUTLINE_HOSTNAME}
+                icon: si:outline
+
+          - type: monitor
+            title: Management
+            cache: 30s
+            sites:
+              - title: Authelia
+                url: https://${AUTH_HOSTNAME}
+                icon: si:authelia
+
+          - type: bookmarks
+            title: Internal
+            groups:
+              - links:
+                  - title: Internal dashboard
+                    url: https://home.arpa
+                    description: Connect to Tailscale first
+                    icon: si:tailscale
+
+          - $include: shared/nodes.yml
+
+  - $include: shared/monitoring.yml

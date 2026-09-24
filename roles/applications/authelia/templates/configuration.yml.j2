@@ -36,6 +36,8 @@ access_control:
       policy: 'one_factor'
     - domain: '*.ops.home.arpa'
       policy: 'one_factor'
+    - domain: '*.{{ base_domain }}'
+      policy: 'one_factor'
 
 session:
   cookies:

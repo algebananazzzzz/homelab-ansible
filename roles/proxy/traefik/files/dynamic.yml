@@ -1,4 +1,14 @@
 http:
+  middlewares:
+    authelia:
+      forwardAuth:
+        address: http://authelia.service.consul:9091/api/authz/forward-auth
+        trustForwardHeader: true
+        authResponseHeaders:
+          - Remote-User
+          - Remote-Groups
+          - Remote-Email
+          - Remote-Name
   routers:
     traefik-dashboard:
       entryPoints:

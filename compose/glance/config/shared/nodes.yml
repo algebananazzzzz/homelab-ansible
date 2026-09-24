@@ -1,0 +1,30 @@
+- type: custom-api
+  title: Nodes
+  cache: 30s
+  url: https://prometheus.ops.home.arpa/api/v1/query
+  parameters:
+    query: up{job="node"}
+  template: |
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;">
+    {{ range .JSON.Array "data.result" }}
+      {{ $host := .String "metric.instance_name" }}
+      <div>
+        <p class="size-h4 color-highlight">{{ $host }}</p>
+        {{ if eq (.String "value.1") "0" }}
+          <p class="color-negative">Node exporter unavailable</p>
+        {{ else }}
+          {{ $cpuQuery := concat "100 * (1 - avg by (instance_name) (rate(node_cpu_seconds_total{job=\"node\",instance_name=\"" $host "\",mode=\"idle\"}[5m])))" }}
+          {{ $memoryQuery := concat "100 * (1 - node_memory_MemAvailable_bytes{job=\"node\",instance_name=\"" $host "\"} / node_memory_MemTotal_bytes{job=\"node\",instance_name=\"" $host "\"})" }}
+          {{ $diskQuery := concat "100 * (1 - node_filesystem_avail_bytes{job=\"node\",instance_name=\"" $host "\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node\",instance_name=\"" $host "\",mountpoint=\"/\"})" }}
+          {{ $cpu := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $cpuQuery | getResponse }}
+          {{ $memory := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $memoryQuery | getResponse }}
+          {{ $disk := newRequest "https://prometheus.ops.home.arpa/api/v1/query" | withParameter "query" $diskQuery | getResponse }}
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem;">
+            <p>CPU<br><span class="size-h4">{{ printf "%.1f" ($cpu.JSON.Float "data.result.0.value.1") }}%</span></p>
+            <p>Memory<br><span class="size-h4">{{ printf "%.1f" ($memory.JSON.Float "data.result.0.value.1") }}%</span></p>
+            <p>Disk<br><span class="size-h4">{{ printf "%.1f" ($disk.JSON.Float "data.result.0.value.1") }}%</span></p>
+          </div>
+        {{ end }}
+      </div>
+    {{ end }}
+    </div>

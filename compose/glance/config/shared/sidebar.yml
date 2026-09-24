@@ -1,0 +1,38 @@
+- type: clock
+  hour-format: 24h
+  timezones:
+    - timezone: Asia/Singapore
+      label: Singapore
+- type: calendar
+  first-day-of-week: monday
+- type: weather
+  location: Singapore, Singapore
+  units: metric
+  hour-format: 24h
+
+- type: custom-api
+  title: Habits
+  cache: 1m
+  url: https://beaverhabits.svc.home.arpa/api/v1/habits/export
+  template: |
+    <div style="display: grid; grid-template-columns: minmax(0, 2fr) repeat(5, minmax(0, 1fr)); gap: .5rem .25rem; align-items: center; text-align: center;">
+      <span></span>
+      {{ range $i := 5 }}
+        {{ $day := offsetNow (printf "-%dh" (mul (sub 4 $i) 24)) }}
+        <span class="color-subdue size-h6">{{ $day.Format "Mon" }}<br>{{ $day.Format "2" }}</span>
+      {{ end }}
+      {{ range .JSON.Array "habits" }}
+        {{ if eq (.String "status") "" }}
+          {{ $records := .Array "records" }}
+          <span style="text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ .String "name" }}</span>
+          {{ range $i := 5 }}
+            {{ $date := (offsetNow (printf "-%dh" (mul (sub 4 $i) 24))).Format "2006-01-02" }}
+            {{ $done := false }}
+            {{ range $records }}
+              {{ if and (eq (.String "day") $date) (.Bool "done") }}{{ $done = true }}{{ end }}
+            {{ end }}
+            <span class="{{ if $done }}color-primary{{ else }}color-subdue{{ end }}">{{ if $done }}✓{{ else }}·{{ end }}</span>
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    </div>
