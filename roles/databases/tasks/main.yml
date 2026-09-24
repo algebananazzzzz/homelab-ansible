@@ -1,0 +1,7 @@
+---
+- name: Create databases
+  ansible.builtin.include_tasks: "{{ database.engine }}.yml"
+  loop: "{{ databases }}"
+  loop_control:
+    loop_var: database
+    label: "{{ database.engine }} {{ database.name }}"

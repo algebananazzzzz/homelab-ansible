@@ -1,31 +1,25 @@
 ---
+authelia_oidc_clients:
+  - id: outline
+    name: Outline
+    redirect_uri: "https://{{ public_hostnames.outline }}/auth/oidc.callback"
+  - id: kaneo
+    name: Kaneo
+    redirect_uri: "https://{{ public_hostnames.kaneo }}/api/auth/oauth2/callback/custom"
+
 compose_projects:
   - name: consul-agent
-    compose_template: true
+    prune_config: true
     files:
-      - config/docmost.hcl
-      - config/kaneo.hcl
       - config/beaverhabits.hcl
+    templated_files:
+      - config/kaneo.hcl
       - config/authelia.hcl
       - config/outline.hcl
-  - name: docmost
-    database:
-      name: docmost
-      service: postgres
-      host: svc-db-01
-      user: admin
-      password_secret: postgres_password
-    secrets:
-      - docmost_app_secret
-      - postgres_password
-      - redis_password
-    secret_environment:
-      DOCMOST_APP_SECRET: docmost_app_secret
-      POSTGRES_PASSWORD: postgres_password
-      REDIS_PASSWORD: redis_password
   - name: kaneo
-    database:
-      name: kaneo
+    environment:
+      KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
+      AUTH_HOSTNAME: "{{ public_hostnames.auth }}"
     secrets:
       - kaneo_auth_secret
       - postgres_password
@@ -34,9 +28,6 @@ compose_projects:
       AUTH_SECRET: kaneo_auth_secret
       CUSTOM_OAUTH_CLIENT_SECRET: kaneo_oidc_client_secret
   - name: authelia
-    oidc_provider: true
-    database:
-      name: authelia
     secrets:
       - authelia_session_secret
       - authelia_storage_encryption_key
@@ -51,19 +42,13 @@ compose_projects:
       OIDC_HMAC_SECRET: authelia_oidc_hmac_secret
       POSTGRES_PASSWORD: postgres_password
       REDIS_PASSWORD: redis_password
-    oidc_clients:
-      - id: outline
-        name: Outline
-        redirect_uri: "https://outline.{{ cloudflare_zone }}/auth/oidc.callback"
-      - id: kaneo
-        name: Kaneo
-        redirect_uri: "https://kaneo.{{ cloudflare_zone }}/api/auth/oauth2/callback/custom"
     templated_files:
       - config/configuration.yml
       - config/users_database.yml
   - name: outline
-    database:
-      name: outline
+    environment:
+      OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"
+      AUTH_HOSTNAME: "{{ public_hostnames.auth }}"
     secrets:
       - outline_secret_key
       - outline_utils_secret

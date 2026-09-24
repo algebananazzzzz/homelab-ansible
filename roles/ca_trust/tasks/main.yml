@@ -1,8 +1,8 @@
 ---
 - name: Read internal certificate authority certificate
   ansible.builtin.slurp:
-    src: "{{ hostvars['svc-proxy-01'].compose_root }}/traefik/certs/ca.crt"
-  delegate_to: svc-proxy-01
+    src: "{{ hostvars[internal_ca_host].tls_directory }}/ca.crt"
+  delegate_to: "{{ internal_ca_host }}"
   register: internal_ca_certificate
 
 - name: Install internal certificate authority certificate

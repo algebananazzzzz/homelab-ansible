@@ -2,17 +2,29 @@
 admin_user: song
 ansible_user: "{{ admin_user }}"
 hypervisor_host: "{{ groups['hypervisor'] | first }}"
-static_secret_values:
+internal_ca_host: svc-proxy-01
+compose_source: "{{ playbook_dir }}/../compose"
+base_domain: algebananazzzzz.com
+
+# Every hostname here is published through the Cloudflare tunnel.
+public_hostnames:
+  auth: "auth.{{ base_domain }}"
+  kaneo: "kaneo.{{ base_domain }}"
+  outline: "outline.{{ base_domain }}"
+
+tls_certificate_domains:
+  - home.arpa
+  - auth.home.arpa
+  - "*.svc.home.arpa"
+  - "*.ops.home.arpa"
+  - "*.{{ base_domain }}"
+
+cloudflare:
+  tunnel_name: homelab
+  api_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN') }}"
+  tunnel_secret: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_SECRET') }}"
+
+env_secrets:
   postgres_password: "{{ lookup('ansible.builtin.env', 'POSTGRES_PASSWORD') }}"
   redis_password: "{{ lookup('ansible.builtin.env', 'REDIS_PASSWORD') }}"
   authelia_user_password: "{{ lookup('ansible.builtin.env', 'AUTHELIA_USER_PASSWORD') }}"
-database_defaults:
-  service: postgres
-  host: svc-db-01
-  user: admin
-  password_secret: postgres_password
-cloudflare_api_url: https://api.cloudflare.com/client/v4
-cloudflare_zone: algebananazzzzz.com
-cloudflare_tunnel_name: homelab
-cloudflare_api_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN') }}"
-cloudflare_tunnel_secret: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_SECRET') }}"

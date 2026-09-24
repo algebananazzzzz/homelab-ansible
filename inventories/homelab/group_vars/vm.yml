@@ -2,6 +2,4 @@
 ansible_ssh_common_args: >-
   -o ProxyCommand="ssh -p {{ hostvars[hypervisor_host].ansible_port }} {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p"
 ansible_host: "{{ vm_definition.address }}"
-vm_network: "{{ vm_definition.network }}"
-vm_mac: "{{ vm_definition.mac }}"
 compose_root: /opt/compose

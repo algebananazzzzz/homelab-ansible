@@ -1,0 +1,29 @@
+name: consul-agent
+
+services:
+  consul-agent:
+    container_name: consul-agent
+    image: hashicorp/consul:1.21.3
+    command:
+      - agent
+      - -client=0.0.0.0
+      # Docker bridges add extra private addresses, so the default bind is ambiguous.
+      - '-bind={{ GetPrivateInterfaces | include "network" "10.10.0.0/16" | attr "address" }}'
+      - -retry-join=10.10.20.10
+      - -data-dir=/consul/data
+      - -config-dir=/consul/conf.d
+    network_mode: host
+    volumes:
+      # Not /consul/config: the image entrypoint chowns that path, which fails read-only.
+      - ./config:/consul/conf.d:ro
+      - consul-agent-data:/consul/data
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  consul-agent-data:
+    name: homelab-consul-agent-data

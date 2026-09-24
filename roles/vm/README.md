@@ -5,14 +5,14 @@
 Run from repository root with Ansible installed and SSH/sudo access to the physical host.
 
 ```bash
-# Provision all VMs, including infrastructure setup and Docker configuration.
+# Build everything in dependency order: host, networks, VMs, guests, services.
+ansible-playbook playbooks/site.yml
+
+# Provision all VMs. Networks must already exist (playbooks/infrastructure.yml).
 ansible-playbook playbooks/vms.yml
 
 # Provision one VM.
 ansible-playbook playbooks/vms.yml -e '{"vm_names":["svc-proxy-01"]}'
-
-# Provision VMs only, when infrastructure and host SSH keys already exist.
-ansible-playbook playbooks/vms.yml --tags vm -e '{"vm_names":["svc-proxy-01"]}'
 ```
 
 Select VMs with `vm_names`, not `--limit`. Add `-K` if sudo requires a password.
@@ -67,4 +67,4 @@ How the guest receives them:
 - **DHCP reservations** map a MAC to a fixed IP. The guest still uses DHCP rather than configuring a static IP itself.
 - For dynamic addresses, the role queries DHCP leases by MAC with `virsh net-dhcp-leases`.
 - The role waits for **TCP port 22**. An open port does not prove cloud-init has finished or SSH authentication succeeds.
-- The full playbook then configures guests marked `docker: true`. Running with `--tags vm` skips that final Docker play.
+- `playbooks/guests.yml` then trusts each VM's host key and configures its DNS. `playbooks/services.yml` installs Docker and deploys its Compose projects.

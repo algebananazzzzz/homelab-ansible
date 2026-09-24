@@ -13,7 +13,7 @@ services:
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_misc_dnsmasq_lines: |-
         address=/home.arpa/10.10.20.10
-        address=/algebananazzzzz.com/10.10.20.10
+        address=/${BASE_DOMAIN}/10.10.20.10
         server=/consul/10.10.20.10#8600
     volumes:
       - ./data:/etc/pihole

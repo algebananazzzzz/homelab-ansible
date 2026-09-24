@@ -15,8 +15,8 @@ services:
     user: root
     volumes:
       - ./config/config.yml:/etc/cloudflared/config.yml:ro
-      - /opt/compose/secrets/cloudflared_credentials:/etc/cloudflared/credentials.json:ro
-      - /opt/compose/traefik/certs/ca.crt:/etc/cloudflared/ca.crt:ro
+      - ../secrets/cloudflared_credentials:/etc/cloudflared/credentials.json:ro
+      - ../traefik/certs/ca.crt:/etc/cloudflared/ca.crt:ro
     healthcheck:
       test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:20241", "ready"]
       interval: 10s

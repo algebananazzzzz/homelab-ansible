@@ -1,0 +1,75 @@
+---
+- name: Check requested Compose projects
+  hosts: docker_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Check requested Compose projects
+      ansible.builtin.assert:
+        that:
+          - project_names | default([]) | difference(all_project_names) | length == 0
+        fail_msg: One or more requested Compose projects are not assigned to any host.
+      run_once: true
+      vars:
+        all_project_names: "{{ groups['docker_hosts'] | map('extract', hostvars, 'compose_projects') | flatten | map(attribute='name') | unique | list }}"
+
+# The CA needs only openssl, so it exists before any container that mounts it starts.
+- name: Issue internal certificates
+  hosts: svc-proxy-01
+  gather_facts: false
+  become: true
+
+  roles:
+    - tls
+
+- name: Trust internal certificate authority
+  hosts: vm
+  gather_facts: false
+  become: true
+
+  roles:
+    - ca_trust
+
+# Every other VM resolves through Pi-hole on mgmt-01.
+- name: Deploy DNS and monitoring services
+  hosts: mgmt-01
+  become: true
+
+  roles:
+    - docker_engine
+    - compose
+
+- name: Deploy data services
+  hosts: svc-db-01
+  become: true
+
+  roles:
+    - docker_engine
+    - compose
+    - databases
+
+- name: Deploy edge services
+  hosts: svc-proxy-01
+  become: true
+
+  roles:
+    - docker_engine
+    - cloudflare_tunnel
+    - compose
+
+- name: Deploy applications
+  hosts: svc-apps-01
+  become: true
+
+  roles:
+    - docker_engine
+    - authelia
+    - compose
+
+- name: Deploy hypervisor services
+  hosts: hypervisor
+  become: true
+
+  roles:
+    - docker_engine
+    - compose

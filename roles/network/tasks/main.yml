@@ -1,30 +1,20 @@
 ---
 - name: Configure bridges and DHCP
   ansible.builtin.import_tasks: bridges.yml
-  when: networks is defined
   tags:
     - bridges
 
 - name: Configure DHCP reservations
   ansible.builtin.import_tasks: reservations.yml
-  when: networks is defined
   tags:
     - reservations
 
 - name: Configure routing
   ansible.builtin.import_tasks: routing.yml
-  when: networks is defined
   tags:
     - routing
 
 - name: Configure NAT
   ansible.builtin.import_tasks: nat.yml
-  when: networks is defined
   tags:
     - nat
-
-- name: Configure client DNS
-  ansible.builtin.import_tasks: client_dns.yml
-  when: network_dns_server is defined
-  tags:
-    - dns

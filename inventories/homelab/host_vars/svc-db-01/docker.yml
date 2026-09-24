@@ -1,7 +1,7 @@
 ---
 compose_projects:
   - name: consul-agent
-    compose_template: true
+    prune_config: true
     files:
       - config/postgres.hcl
       - config/redis.hcl

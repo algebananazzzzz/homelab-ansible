@@ -6,6 +6,9 @@ services:
     image: glanceapp/glance:latest
     environment:
       TZ: Asia/Singapore
+      # Glance substitutes these into glance.yml itself.
+      KANEO_HOSTNAME: ${KANEO_HOSTNAME}
+      OUTLINE_HOSTNAME: ${OUTLINE_HOSTNAME}
     dns:
       - 10.10.10.10
     ports:

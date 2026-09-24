@@ -5,7 +5,6 @@ services:
     container_name: postgres
     image: postgres:18
     environment:
-      POSTGRES_DB: docmost
       POSTGRES_USER: admin
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     ports:

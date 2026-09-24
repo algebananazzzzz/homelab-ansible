@@ -2,7 +2,7 @@ tunnel: {{ cloudflared_tunnel_id }}
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-{% for hostname in project.tunnel_hostnames %}
+{% for hostname in public_hostnames.values() %}
   - hostname: {{ hostname }}
     service: https://127.0.0.1:443
     originRequest:

@@ -1,11 +1,13 @@
 ---
 compose_projects:
   - name: consul-agent
-    compose_template: true
+    prune_config: true
     files:
       - config/prometheus.hcl
       - config/glance.hcl
   - name: pihole
+    environment:
+      BASE_DOMAIN: "{{ base_domain }}"
   - name: prometheus
     files:
       - config/prometheus.yml
@@ -15,6 +17,9 @@ compose_projects:
         group: "65534"
         mode: "0750"
   - name: glance
+    environment:
+      KANEO_HOSTNAME: "{{ public_hostnames.kaneo }}"
+      OUTLINE_HOSTNAME: "{{ public_hostnames.outline }}"
     files:
       - config/glance.yml
   - name: cadvisor

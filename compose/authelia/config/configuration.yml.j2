@@ -44,9 +44,9 @@ session:
       default_redirection_url: 'https://auth.home.arpa/'
       expiration: '1h'
       inactivity: '5m'
-    - domain: '{{ cloudflare_zone }}'
-      authelia_url: 'https://auth.{{ cloudflare_zone }}'
-      default_redirection_url: 'https://auth.{{ cloudflare_zone }}/'
+    - domain: '{{ base_domain }}'
+      authelia_url: 'https://{{ public_hostnames.auth }}'
+      default_redirection_url: 'https://{{ public_hostnames.auth }}/'
       expiration: '1h'
       inactivity: '5m'
   redis:
@@ -77,12 +77,12 @@ identity_providers:
         algorithm: 'RS256'
         use: 'sig'
         key: |
-          {{ oidc_jwks_private_key | indent(10) }}
+          {{ authelia_jwks_private_key | indent(10) }}
     clients:
-{% for client in project.oidc_clients %}
+{% for client in authelia_oidc_clients %}
       - client_id: '{{ client.id }}'
         client_name: '{{ client.name }}'
-        client_secret: '{{ oidc_client_secret_hashes[client.id] }}'
+        client_secret: '{{ authelia_client_secret_hashes[client.id] }}'
         public: false
         authorization_policy: 'one_factor'
         consent_mode: 'implicit'

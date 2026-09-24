@@ -12,7 +12,7 @@ ansible-playbook playbooks/infrastructure.yml
 ansible-playbook playbooks/infrastructure.yml --tags network
 ```
 
-Host settings live in `inventories/homelab/host_vars/hv-01/network.yml`. Guest DNS configuration runs through the VM and Docker playbooks when `network_dns_server` is defined.
+Host settings live in `inventories/homelab/host_vars/hv-01/network.yml`. Guest DNS is configured by the `guest` role in `playbooks/guests.yml` when `vm_dns_server` is defined.
 
 ## Libvirt networks and bridges
 
@@ -44,9 +44,9 @@ Host settings live in `inventories/homelab/host_vars/hv-01/network.yml`. Guest D
 
 - `homelab-router.service` loads the NAT rules at boot and reloads them when configuration changes. It replaces only the `homelab_nat` table.
 - `nft -c` validates the generated rules before Ansible installs the file.
-- **systemd-networkd** manages guest interface settings. `client_dns.yml` keeps DHCP on `ens3`, sets the configured DNS server, and disables DNS learned through DHCP.
+- **systemd-networkd** manages guest interface settings. The `guest` role's `dns.yml` keeps DHCP on `ens3`, sets the configured DNS server, and disables DNS learned through DHCP.
 - **systemd-resolved** handles guest DNS resolution. `Domains=~.` directs all DNS domains through the configured resolver.
-- The role reloads networkd and applies interface DNS with `resolvectl` without replacing the DHCP lease. It restarts resolved when its configuration changes.
+- The `guest` role reloads networkd and applies interface DNS with `resolvectl` without replacing the DHCP lease. It restarts resolved when its configuration changes.
 - Guest DNS tasks expect `systemd-networkd`, `systemd-resolved`, and interface `ens3` to exist; they do not install those services.
 
 ## Inspect

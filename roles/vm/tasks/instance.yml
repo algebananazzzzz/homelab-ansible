@@ -130,12 +130,8 @@
     delay: 5
     timeout: 300
 
-- name: Add Docker VM to groups for subsequent plays
+# Inventory derives ansible_host from a reserved address; a VM on a dynamic lease only has one after this.
+- name: Record VM address for later plays
   ansible.builtin.add_host:
     name: "{{ vm.name }}"
-    groups:
-      - provisioned_vms
-      - service
-      - docker_hosts
     ansible_host: "{{ vm_address }}"
-  when: vm.docker | default(false)

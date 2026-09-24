@@ -1,0 +1,32 @@
+---
+- name: Create project directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ project.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+# slurp fails on a missing secret, where a shell $(cat) would write an empty value.
+- name: Read project environment secrets
+  ansible.builtin.slurp:
+    src: "{{ compose_root }}/secrets/{{ item.value }}"
+  loop: "{{ project.secret_environment | default({}) | dict2items }}"
+  register: environment_secrets
+  no_log: true
+
+# Compose interpolates ${VAR} in compose.yml from this file.
+- name: Write project environment file
+  ansible.builtin.copy:
+    content: |
+      {% for variable, value in (project.environment | default({})).items() %}
+      {{ variable }}={{ value }}
+      {% endfor %}
+      {% for secret in environment_secrets.results %}
+      {{ secret.item.key }}={{ secret.content | b64decode | trim }}
+      {% endfor %}
+    dest: "{{ compose_root }}/{{ project.name }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true

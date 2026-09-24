@@ -1,0 +1,12 @@
+---
+- name: Check for deployed Compose file
+  ansible.builtin.stat:
+    path: "{{ compose_root }}/{{ project.name }}/compose.yml"
+  register: absent_compose_file
+
+# Volumes and the project directory stay on disk: deleting data is a manual decision.
+- name: Remove Compose project containers and networks
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/{{ project.name }}"
+    state: absent
+  when: absent_compose_file.stat.exists

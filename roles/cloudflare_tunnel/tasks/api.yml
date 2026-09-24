@@ -1,0 +1,25 @@
+---
+# Non-2xx responses are accepted so the check below can report Cloudflare's own error text,
+# which no_log would otherwise hide along with the token.
+- name: "Cloudflare API {{ request.method | default('GET') }} {{ request.path | regex_replace('\\?.*', '') }}"
+  ansible.builtin.uri:
+    url: "https://api.cloudflare.com/client/v4{{ request.path }}"
+    method: "{{ request.method | default('GET') }}"
+    headers:
+      Authorization: "Bearer {{ cloudflare.api_token }}"
+    body_format: json
+    body: "{{ request.body | default(omit) }}"
+    status_code: [200, 400, 401, 403, 404, 409, 429]
+  register: cloudflare_response
+  changed_when: (request.method | default('GET')) != 'GET'
+  check_mode: false
+  delegate_to: localhost
+  become: false
+  no_log: true
+
+- name: Check Cloudflare API response
+  ansible.builtin.assert:
+    that: cloudflare_response.json.success | default(false)
+    fail_msg: >-
+      Cloudflare API {{ request.method | default('GET') }} {{ request.path }}
+      returned {{ cloudflare_response.status }}: {{ cloudflare_response.json.errors | default(cloudflare_response.msg | default('')) }}

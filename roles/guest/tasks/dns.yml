@@ -1,0 +1,69 @@
+---
+- name: Create networkd configuration directory
+  ansible.builtin.file:
+    path: /etc/systemd/network
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure persistent VM DNS
+  ansible.builtin.copy:
+    dest: /etc/systemd/network/10-homelab.network
+    content: |
+      [Match]
+      Name=ens3
+
+      [Network]
+      DHCP=ipv4
+      DNS={{ vm_dns_server }}
+      Domains=~.
+
+      [DHCPv4]
+      UseDNS=false
+    owner: root
+    group: root
+    mode: "0644"
+  register: networkd_dns_result
+
+- name: Reload networkd configuration
+  ansible.builtin.command:
+    argv:
+      - networkctl
+      - reload
+  when: networkd_dns_result.changed
+
+- name: Apply VM DNS without replacing DHCP lease
+  ansible.builtin.command:
+    argv:
+      - resolvectl
+      - dns
+      - ens3
+      - "{{ vm_dns_server }}"
+  when: networkd_dns_result.changed
+
+- name: Create resolved configuration directory
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure client DNS server
+  ansible.builtin.copy:
+    dest: /etc/systemd/resolved.conf.d/homelab.conf
+    content: |
+      [Resolve]
+      DNS={{ vm_dns_server }}
+      Domains=~.
+    owner: root
+    group: root
+    mode: "0644"
+  register: resolved_dns_result
+
+- name: Enable client DNS configuration
+  ansible.builtin.systemd_service:
+    name: systemd-resolved.service
+    enabled: true
+    state: "{{ 'restarted' if resolved_dns_result.changed else 'started' }}"

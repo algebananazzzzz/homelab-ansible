@@ -1,4 +1,3 @@
 ---
-compose_root: /volume1/docker/homelab
 compose_projects:
   - name: cadvisor

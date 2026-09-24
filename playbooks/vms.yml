@@ -1,6 +1,4 @@
 ---
-- import_playbook: infrastructure.yml
-
 - name: Create virtual machines
   hosts: hypervisor
   gather_facts: false
@@ -34,38 +32,3 @@
       tags:
         - vm
 
-- name: Configure provisioned Docker VMs
-  hosts: provisioned_vms
-  gather_facts: false
-  become: true
-
-  pre_tasks:
-    - name: Trust newly provisioned VM host key
-      ansible.builtin.command:
-        argv:
-          - ssh
-          - -o
-          - BatchMode=yes
-          - -o
-          - StrictHostKeyChecking=accept-new
-          - -o
-          - >-
-            ProxyCommand=ssh -p {{ hostvars[hypervisor_host].ansible_port }}
-            {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p
-          - "{{ admin_user }}@{{ ansible_host }}"
-          - "true"
-      delegate_to: localhost
-      become: false
-      changed_when: false
-
-    - name: Gather provisioned VM facts
-      ansible.builtin.setup:
-
-    - name: Configure service VM DNS
-      ansible.builtin.include_role:
-        name: network
-        tasks_from: client_dns
-      when: network_dns_server is defined
-
-  roles:
-    - docker

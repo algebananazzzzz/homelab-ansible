@@ -1,21 +1,14 @@
 ---
+tls_directory: "{{ compose_root }}/traefik/certs"
 compose_projects:
   - name: consul
   - name: traefik
-    certificate: true
-    certificate_domains:
-      - home.arpa
-      - auth.home.arpa
-      - "*.svc.home.arpa"
-      - "*.ops.home.arpa"
-      - "*.{{ cloudflare_zone }}"
+    # The certificates are bind-mounted, so Compose cannot see them change.
+    # Undefined when the tls play did not run for this host, so nothing changed.
+    force_recreate: "{{ tls_certificate_changed | default(false) }}"
     files:
       - dynamic.yml
   - name: cadvisor
   - name: cloudflared
     templated_files:
       - config/config.yml
-    tunnel_hostnames:
-      - "outline.{{ cloudflare_zone }}"
-      - "kaneo.{{ cloudflare_zone }}"
-      - "auth.{{ cloudflare_zone }}"

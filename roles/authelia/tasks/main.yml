@@ -1,0 +1,117 @@
+---
+- name: Read Authelia image from its Compose file
+  ansible.builtin.set_fact:
+    authelia_image: "{{ (lookup('ansible.builtin.file', compose_source ~ '/authelia/compose.yml') | from_yaml).services.authelia.image }}"
+
+- name: Create Authelia project directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/authelia"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create OIDC provider directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/authelia/oidc"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Generate OIDC signing key pair
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      docker run --rm -v {{ compose_root }}/authelia/oidc:/keys \
+        {{ authelia_image }} authelia crypto pair rsa generate --directory /keys
+      chmod 644 private.pem public.pem
+    chdir: "{{ compose_root }}/authelia/oidc"
+    creates: "{{ compose_root }}/authelia/oidc/private.pem"
+
+- name: Generate OIDC client secrets
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      docker run --rm {{ authelia_image }} authelia crypto hash generate pbkdf2 \
+        --variant sha512 --random --random.length 72 --random.charset rfc3986 > raw.txt
+      grep 'Random Password:' raw.txt | sed 's/Random Password: //' > {{ client.id }}_client_secret.txt
+      grep 'Digest:' raw.txt | sed 's/Digest: //' > {{ client.id }}_client_secret_hash.txt
+      rm -f raw.txt
+    chdir: "{{ compose_root }}/authelia/oidc"
+    creates: "{{ compose_root }}/authelia/oidc/{{ client.id }}_client_secret.txt"
+  loop: "{{ authelia_oidc_clients }}"
+  loop_control:
+    loop_var: client
+    label: "{{ client.id }}"
+
+- name: Require Authelia user password
+  ansible.builtin.assert:
+    that:
+      - env_secrets.authelia_user_password | length > 0
+    fail_msg: AUTHELIA_USER_PASSWORD is empty. Set it in the environment, for example by sourcing .env.
+
+- name: Write Authelia user password
+  ansible.builtin.copy:
+    content: "{{ env_secrets.authelia_user_password }}"
+    dest: "{{ compose_root }}/authelia/oidc/user_password.txt"
+    owner: root
+    group: root
+    mode: "0600"
+  register: user_password_file
+  no_log: true
+
+- name: Check Authelia user password hash
+  ansible.builtin.stat:
+    path: "{{ compose_root }}/authelia/oidc/user_password_hash.txt"
+  register: user_password_hash_file
+
+# Argon2 salts randomly, so hashing on every run would rewrite users_database.yml and recreate the container each deploy.
+- name: Hash Authelia user password
+  ansible.builtin.shell:
+    cmd: |
+      umask 077
+      docker run --rm {{ authelia_image }} authelia crypto hash generate argon2 \
+        --password "$(cat user_password.txt)" > raw.txt
+      grep 'Digest:' raw.txt | sed 's/Digest: //' > user_password_hash.txt
+      rm -f raw.txt
+    chdir: "{{ compose_root }}/authelia/oidc"
+  when: user_password_file.changed or not user_password_hash_file.stat.exists
+  no_log: true
+
+- name: Copy OIDC client secrets to shared secrets
+  ansible.builtin.copy:
+    src: "{{ compose_root }}/authelia/oidc/{{ client.id }}_client_secret.txt"
+    dest: "{{ compose_root }}/secrets/{{ client.id }}_oidc_client_secret"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ authelia_oidc_clients }}"
+  loop_control:
+    loop_var: client
+    label: "{{ client.id }}"
+
+- name: Read generated OIDC artifacts
+  ansible.builtin.slurp:
+    src: "{{ compose_root }}/authelia/oidc/{{ item }}"
+  loop:
+    - private.pem
+    - user_password_hash.txt
+  register: oidc_artifacts
+
+- name: Read OIDC client secret hashes
+  ansible.builtin.slurp:
+    src: "{{ compose_root }}/authelia/oidc/{{ client.id }}_client_secret_hash.txt"
+  loop: "{{ authelia_oidc_clients }}"
+  loop_control:
+    loop_var: client
+    label: "{{ client.id }}"
+  register: oidc_client_hashes
+
+- name: Set Authelia template facts
+  ansible.builtin.set_fact:
+    authelia_jwks_private_key: "{{ oidc_artifacts.results[0].content | b64decode }}"
+    authelia_user_password_hash: "{{ (oidc_artifacts.results[1].content | b64decode) | trim }}"
+    authelia_client_secret_hashes: >-
+      {{ dict(authelia_oidc_clients | map(attribute='id') | zip(oidc_client_hashes.results | map(attribute='content') | map('b64decode') | map('trim'))) }}
