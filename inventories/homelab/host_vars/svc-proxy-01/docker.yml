@@ -1,12 +1,5 @@
 ---
-tls_directory: "{{ compose_root }}/traefik/certs"
 compose_projects:
-  - name: traefik
-    # The certificates are bind-mounted, so Compose cannot see them change.
-    # Undefined when the tls play did not run for this host, so nothing changed.
-    force_recreate: "{{ tls_certificate_changed | default(false) }}"
-    files:
-      - dynamic.yml
   - name: cloudflared
     templated_files:
       - config/config.yml

@@ -13,23 +13,6 @@
       vars:
         all_project_names: "{{ groups['docker_hosts'] | map('extract', hostvars) | selectattr('compose_projects', 'defined') | map(attribute='compose_projects') | flatten | map(attribute='name') | unique | list }}"
 
-# The CA needs only openssl, so it exists before any container that mounts it starts.
-- name: Issue internal certificates
-  hosts: svc-proxy-01
-  gather_facts: false
-  become: true
-
-  roles:
-    - tls
-
-- name: Trust internal certificate authority
-  hosts: vm
-  gather_facts: false
-  become: true
-
-  roles:
-    - ca_trust
-
 # Every other VM resolves through Pi-hole on mgmt-01.
 - name: Deploy DNS and monitoring services
   hosts: mgmt-01
@@ -37,10 +20,6 @@
 
   roles:
     - compose
-
-  roles:
-    - compose
-    - databases
 
 - name: Deploy edge services
   hosts: svc-proxy-01

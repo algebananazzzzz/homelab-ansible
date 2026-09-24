@@ -2,7 +2,6 @@
 admin_user: song
 ansible_user: "{{ admin_user }}"
 hypervisor_host: "{{ groups['hypervisor'] | first }}"
-internal_ca_host: svc-proxy-01
 compose_source: "{{ playbook_dir }}/../compose"
 base_domain: algebananazzzzz.com
 

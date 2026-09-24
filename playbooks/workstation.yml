@@ -4,5 +4,8 @@
   gather_facts: false
   become: true
 
-  roles:
-    - ca_trust
+  tasks:
+    - name: Install the internal CA
+      ansible.builtin.include_role:
+        name: home_tls/internal_ca
+        tasks_from: trust

@@ -1,0 +1,2 @@
+---
+internal_ca_directory: "{{ compose_root }}/traefik/certs"

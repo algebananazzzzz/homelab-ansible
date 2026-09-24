@@ -1,0 +1,20 @@
+---
+- name: Issue internal certificates and deploy Traefik
+  hosts: traefik
+  gather_facts: false
+  become: true
+
+  roles:
+    - home_tls/internal_ca
+    - home_tls/traefik
+
+- name: Trust the internal certificate authority
+  hosts: vm
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Install the internal CA
+      ansible.builtin.include_role:
+        name: home_tls/internal_ca
+        tasks_from: trust

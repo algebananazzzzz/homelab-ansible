@@ -17,6 +17,9 @@ services:
       - --providers.file.filename=/etc/traefik/dynamic.yml
       - --providers.file.watch=true
     network_mode: host
+    labels:
+      # A new certificate changes this label, and Compose recreates Traefik so it loads the certificate.
+      homelab.certificate-sha1: "{{ traefik_certificate.stat.checksum }}"
     volumes:
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
       - ./certs:/etc/traefik/certs:ro

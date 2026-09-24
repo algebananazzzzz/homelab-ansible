@@ -1,0 +1,38 @@
+---
+- name: Create Traefik directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/traefik"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write Traefik dynamic configuration
+  ansible.builtin.copy:
+    src: dynamic.yml
+    dest: "{{ compose_root }}/traefik/dynamic.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: traefik_dynamic_configuration
+
+- name: Read the server certificate
+  ansible.builtin.stat:
+    path: "{{ compose_root }}/traefik/certs/server.crt"
+  register: traefik_certificate
+
+- name: Write Traefik Compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ compose_root }}/traefik/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Traefik
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/traefik"
+    remove_orphans: true
+    wait: true
+    # dynamic.yml is bind-mounted as a single file, so the container keeps the old copy until it is recreated.
+    recreate: "{{ 'always' if traefik_dynamic_configuration.changed else 'auto' }}"

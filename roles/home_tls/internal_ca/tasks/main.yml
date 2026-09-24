@@ -1,7 +1,7 @@
 ---
 - name: Create certificate directory
   ansible.builtin.file:
-    path: "{{ tls_directory }}"
+    path: "{{ internal_ca_directory }}"
     state: directory
     owner: root
     group: root
@@ -14,8 +14,8 @@
       openssl genrsa -out ca.key 4096
       openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
         -subj "/CN=HomeLab Internal CA" -out ca.crt
-    chdir: "{{ tls_directory }}"
-    creates: "{{ tls_directory }}/ca.crt"
+    chdir: "{{ internal_ca_directory }}"
+    creates: "{{ internal_ca_directory }}/ca.crt"
 
 - name: Remove server certificate that lacks a requested domain
   ansible.builtin.shell:
@@ -29,7 +29,7 @@
       [ -n "$missing" ] || exit 0
       rm -f server.crt server.key
       echo changed
-    chdir: "{{ tls_directory }}"
+    chdir: "{{ internal_ca_directory }}"
   register: server_certificate_reset
   changed_when: server_certificate_reset.stdout == 'changed'
 
@@ -46,10 +46,6 @@
       openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
         -days 1825 -sha256 -extfile ext.cnf -out server.crt
       rm -f server.csr ext.cnf
-    chdir: "{{ tls_directory }}"
-    creates: "{{ tls_directory }}/server.crt"
-  register: server_certificate
+    chdir: "{{ internal_ca_directory }}"
+    creates: "{{ internal_ca_directory }}/server.crt"
 
-- name: Record server certificate state
-  ansible.builtin.set_fact:
-    tls_certificate_changed: "{{ server_certificate_reset.changed or server_certificate.changed }}"
