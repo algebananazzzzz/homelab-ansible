@@ -39,7 +39,6 @@ compose_projects:
       CUSTOM_OAUTH_CLIENT_SECRET: kaneo_oidc_client_secret
   - name: authelia
     oidc_provider: true
-    oidc_image: docker.io/authelia/authelia:4.39.20
     database:
       name: authelia
       service: postgres
