@@ -1,5 +1,4 @@
 ---
-ansible_host: "{{ vm_definition.address }}"
 vm_definition:
   name: svc-proxy-01
   network: br-svc

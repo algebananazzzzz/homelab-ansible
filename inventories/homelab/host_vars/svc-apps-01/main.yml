@@ -3,6 +3,7 @@ vm_definition:
   name: svc-apps-01
   network: br-svc
   mac: '52:54:00:20:00:13'
+  address: 10.10.20.113
   memory_mb: 4096
   vcpus: 2
   disk_gb: 15

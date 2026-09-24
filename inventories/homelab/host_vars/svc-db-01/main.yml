@@ -3,6 +3,7 @@ vm_definition:
   name: svc-db-01
   network: br-svc
   mac: '52:54:00:20:00:12'
+  address: 10.10.20.112
   memory_mb: 4096
   vcpus: 2
   disk_gb: 20

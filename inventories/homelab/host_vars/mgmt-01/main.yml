@@ -1,5 +1,4 @@
 ---
-ansible_host: "{{ vm_definition.address }}"
 tailscale_advertised_routes:
   - 10.10.10.0/24
   - 10.10.20.0/24

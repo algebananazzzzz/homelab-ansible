@@ -5,6 +5,12 @@
   tags:
     - bridges
 
+- name: Configure DHCP reservations
+  ansible.builtin.import_tasks: reservations.yml
+  when: networks is defined
+  tags:
+    - reservations
+
 - name: Configure routing
   ansible.builtin.import_tasks: routing.yml
   when: networks is defined

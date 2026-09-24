@@ -1,0 +1,17 @@
+---
+# net-define skips networks that already exist, so reservations added later must be pushed into the live network.
+# --live needs a running network, so this runs after bridges.yml has started them.
+- name: Add missing DHCP reservations
+  ansible.builtin.shell:
+    cmd: |
+      if virsh net-dumpxml {{ item.0.name }} | grep -q "{{ item.1.mac }}"; then
+        exit 0
+      fi
+      virsh net-update {{ item.0.name }} add ip-dhcp-host \
+        "<host mac='{{ item.1.mac }}' name='{{ item.1.name }}' ip='{{ item.1.address }}'/>" --live --config > /dev/null
+      echo changed
+  loop: "{{ networks | subelements('reservations', skip_missing=true) }}"
+  loop_control:
+    label: "{{ item.0.name }} {{ item.1.name }}"
+  register: dhcp_reservations
+  changed_when: dhcp_reservations.stdout == 'changed'
