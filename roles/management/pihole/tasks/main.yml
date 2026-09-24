@@ -1,0 +1,22 @@
+---
+- name: Create Pi-hole directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/pihole"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write Pi-hole Compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ compose_root }}/pihole/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Pi-hole
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/pihole"
+    remove_orphans: true
+    wait: true

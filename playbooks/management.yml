@@ -1,4 +1,13 @@
 ---
+# Every VM resolves names through Pi-hole, so it comes first.
+- name: Deploy Pi-hole
+  hosts: pihole
+  gather_facts: false
+  become: true
+
+  roles:
+    - management/pihole
+
 - name: Deploy Consul server
   hosts: consul_server
   gather_facts: false

@@ -1,8 +1,5 @@
 ---
 compose_projects:
-  - name: pihole
-    environment:
-      BASE_DOMAIN: "{{ base_domain }}"
   - name: prometheus
     files:
       - config/prometheus.yml

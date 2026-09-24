@@ -1,0 +1,20 @@
+name: pihole
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.07.2
+    ports:
+      - "{{ ansible_host }}:53:53/tcp"
+      - "{{ ansible_host }}:53:53/udp"
+      - "8080:80/tcp"
+    environment:
+      TZ: Asia/Singapore
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_misc_dnsmasq_lines: |-
+        address=/home.arpa/{{ hostvars[groups['traefik'] | first].ansible_host }}
+        address=/{{ base_domain }}/{{ hostvars[groups['traefik'] | first].ansible_host }}
+        server=/consul/{{ hostvars[groups['consul_server'] | first].ansible_host }}#8600
+    volumes:
+      - ./data:/etc/pihole
+    restart: unless-stopped
