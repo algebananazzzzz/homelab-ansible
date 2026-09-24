@@ -8,7 +8,7 @@ compose_projects:
       - auth.home.arpa
       - "*.svc.home.arpa"
       - "*.ops.home.arpa"
-      - "*.algebananazzzzz.com"
+      - "*.{{ cloudflare_zone }}"
     files:
       - dynamic.yml
   - name: cadvisor
@@ -16,6 +16,6 @@ compose_projects:
     templated_files:
       - config/config.yml
     tunnel_hostnames:
-      - outline.algebananazzzzz.com
-      - kaneo.algebananazzzzz.com
-      - auth.algebananazzzzz.com
+      - "outline.{{ cloudflare_zone }}"
+      - "kaneo.{{ cloudflare_zone }}"
+      - "auth.{{ cloudflare_zone }}"

@@ -62,10 +62,10 @@ compose_projects:
     oidc_clients:
       - id: outline
         name: Outline
-        redirect_uri: https://outline.algebananazzzzz.com/auth/oidc.callback
+        redirect_uri: "https://outline.{{ cloudflare_zone }}/auth/oidc.callback"
       - id: kaneo
         name: Kaneo
-        redirect_uri: https://kaneo.algebananazzzzz.com/api/auth/oauth2/callback/custom
+        redirect_uri: "https://kaneo.{{ cloudflare_zone }}/api/auth/oauth2/callback/custom"
     templated_files:
       - config/configuration.yml
       - config/users_database.yml
