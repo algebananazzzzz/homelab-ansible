@@ -26,10 +26,6 @@ compose_projects:
   - name: kaneo
     database:
       name: kaneo
-      service: postgres
-      host: svc-db-01
-      user: admin
-      password_secret: postgres_password
     secrets:
       - kaneo_auth_secret
       - postgres_password
@@ -41,10 +37,6 @@ compose_projects:
     oidc_provider: true
     database:
       name: authelia
-      service: postgres
-      host: svc-db-01
-      user: admin
-      password_secret: postgres_password
     secrets:
       - authelia_session_secret
       - authelia_storage_encryption_key
@@ -72,10 +64,6 @@ compose_projects:
   - name: outline
     database:
       name: outline
-      service: postgres
-      host: svc-db-01
-      user: admin
-      password_secret: postgres_password
     secrets:
       - outline_secret_key
       - outline_utils_secret

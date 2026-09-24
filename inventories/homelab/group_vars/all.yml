@@ -6,6 +6,11 @@ static_secret_values:
   postgres_password: "{{ lookup('ansible.builtin.env', 'POSTGRES_PASSWORD') }}"
   redis_password: "{{ lookup('ansible.builtin.env', 'REDIS_PASSWORD') }}"
   authelia_user_password: "{{ lookup('ansible.builtin.env', 'AUTHELIA_USER_PASSWORD') }}"
+database_defaults:
+  service: postgres
+  host: svc-db-01
+  user: admin
+  password_secret: postgres_password
 cloudflare_api_url: https://api.cloudflare.com/client/v4
 cloudflare_zone: algebananazzzzz.com
 cloudflare_tunnel_name: homelab
