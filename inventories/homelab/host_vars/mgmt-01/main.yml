@@ -8,6 +8,6 @@ vm_definition:
   network: br-mgmt
   mac: '52:54:00:10:00:10'
   address: 10.10.10.10
-  memory_mb: 2048
+  memory_mb: 3072
   vcpus: 2
   disk_gb: 20
