@@ -1,3 +1,4 @@
 ---
 ansible_host: "{{ vm_definition.address }}"
 compose_root: /opt/compose
+vm_dns_server: "{{ hostvars[groups['pihole'] | first].ansible_host }}"

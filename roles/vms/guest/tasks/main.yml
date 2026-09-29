@@ -21,9 +21,5 @@
 - name: Gather VM facts
   ansible.builtin.setup:
 
-- name: Configure VM DNS
-  ansible.builtin.import_tasks: dns.yml
-  when: vm_dns_server is defined
-
 - name: Install Docker
   ansible.builtin.import_tasks: docker.yml
