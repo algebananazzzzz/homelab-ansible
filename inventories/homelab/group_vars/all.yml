@@ -21,9 +21,10 @@ tls_certificate_domains:
 
 cloudflare:
   tunnel_name: homelab
-  api_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN') }}"
-  tunnel_secret: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_SECRET') }}"
+  api_token: "{{ cloudflare_api_token }}"
+  tunnel_secret: "{{ cloudflare_tunnel_secret }}"
 
+# Read from .env only by databases.yml and applications.yml, which site.yml no longer runs. Both go away in phase 4.
 env_secrets:
   postgres_password: "{{ lookup('ansible.builtin.env', 'POSTGRES_PASSWORD') }}"
   redis_password: "{{ lookup('ansible.builtin.env', 'REDIS_PASSWORD') }}"

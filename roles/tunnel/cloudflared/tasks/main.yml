@@ -5,8 +5,8 @@
       - cloudflare.api_token | length > 0
       - (cloudflare.tunnel_secret | b64decode | length) == 32
     fail_msg: >-
-      Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_TUNNEL_SECRET (32 random bytes,
-      base64 encoded) in the environment, for example by sourcing .env.
+      Set cloudflare_api_token and cloudflare_tunnel_secret (32 random bytes,
+      base64 encoded) with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`.
 
 - name: Look up Cloudflare zone
   ansible.builtin.include_tasks: api.yml

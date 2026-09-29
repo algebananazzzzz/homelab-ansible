@@ -1,9 +1,8 @@
 ---
 # Each playbook depends on the ones above it.
+# databases.yml and applications.yml are no longer run here: Komodo takes over what they deploy.
 - import_playbook: vms.yml
 - import_playbook: core.yml
 - import_playbook: observability.yml
-- import_playbook: databases.yml
 - import_playbook: proxy.yml
 - import_playbook: tunnel.yml
-- import_playbook: applications.yml
