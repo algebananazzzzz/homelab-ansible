@@ -1,0 +1,49 @@
+---
+- name: Read the onboarding key from Komodo Core's host
+  ansible.builtin.slurp:
+    src: "{{ compose_root }}/komodo/onboarding.key"
+  delegate_to: "{{ groups['komodo_core'] | first }}"
+  run_once: true
+  register: komodo_onboarding_key
+  no_log: true
+
+- name: Create Periphery directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/komodo-periphery"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Create Periphery root directory
+  ansible.builtin.file:
+    path: /etc/komodo
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Periphery needs the key only to register; afterwards it authenticates with the key pair it keeps in keys/.
+- name: Write Periphery environment file
+  ansible.builtin.copy:
+    content: |
+      PERIPHERY_ONBOARDING_KEY={{ komodo_onboarding_key.content | b64decode | trim }}
+    dest: "{{ compose_root }}/komodo-periphery/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Write Periphery Compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ compose_root }}/komodo-periphery/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Periphery
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/komodo-periphery"
+    remove_orphans: true
+    wait: true

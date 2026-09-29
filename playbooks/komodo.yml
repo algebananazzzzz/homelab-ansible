@@ -6,3 +6,11 @@
 
   roles:
     - komodo/core
+
+- name: Deploy Komodo Periphery
+  hosts: komodo_periphery
+  gather_facts: false
+  become: true
+
+  roles:
+    - komodo/periphery

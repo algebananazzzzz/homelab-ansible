@@ -1,0 +1,23 @@
+name: komodo-periphery
+
+services:
+  periphery:
+    container_name: komodo-periphery
+    image: ghcr.io/moghtech/komodo-periphery:2.3.3
+    init: true
+    environment:
+      PERIPHERY_CORE_ADDRESS: ws://komodo.service.consul:9120
+      PERIPHERY_CONNECT_AS: {{ inventory_hostname }}
+      PERIPHERY_ONBOARDING_KEY: ${PERIPHERY_ONBOARDING_KEY}
+      PERIPHERY_ROOT_DIRECTORY: /etc/komodo
+      PERIPHERY_INCLUDE_DISK_MOUNTS: /etc/hostname
+    labels:
+      # Keeps Komodo's "stop all containers" actions from stopping Periphery itself.
+      komodo.skip: ""
+    volumes:
+      - ./keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      # The same path inside and out, so relative bind mounts in the stacks Periphery deploys resolve on the host.
+      - /etc/komodo:/etc/komodo
+    restart: unless-stopped
