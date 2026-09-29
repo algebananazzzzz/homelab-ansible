@@ -19,15 +19,15 @@
 - Secrets exist only in `inventories/homelab/group_vars/all.sops.yml`, or in root-only files on the hosts. Every task that handles a secret has `no_log: true`. Never print a secret value in a command's output.
 - No file in this repo may gain an application name (Kaneo, Outline, Glance, beaverhabits, Authelia, Postgres, Redis) because of this plan.
 - Run every command from the repo root. Use `.venv/bin/sops` and `.venv/bin/age-keygen`, not system binaries.
-- The workstation reaches hv-01 over its own Tailscale address, and Ansible reaches the VMs by jumping through hv-01. The workstation reaches `10.10.x.x` addresses directly (for `curl` checks) through mgmt-01's Tailscale subnet routes, which are down while mgmt-01 restarts.
+- The workstation reaches hv-01 over hv-01's own Tailscale address. From Task 2 on, it reaches the VMs' `10.10.x.x` addresses (for Ansible and for `curl` checks) directly over mgmt-01's Tailscale subnet routes, which are down while mgmt-01 restarts. Only `vms.yml` still jumps through hv-01.
 
 ## Review Focus
 
-1. The registrator deregistering the existing `.hcl`-based services, which would drop their Traefik routes. Pinned by Task 3 Step 6.
-2. Existing public hostnames (`auth`, `kaneo`, `outline`, `glance`) returning errors after the wildcard replaces per-host ingress. Pinned by Task 4 Steps 1 and 5.
+1. The registrator deregistering the existing `.hcl`-based services, which would drop their Traefik routes. Pinned by Task 4 Step 6.
+2. Existing public hostnames (`auth`, `kaneo`, `outline`, `glance`) returning errors after the wildcard replaces per-host ingress. Pinned by Task 5 Steps 1 and 5.
 3. A missing or wrong age key producing empty secrets instead of a failed run. Pinned by Task 1 Step 12.
-4. VMs losing DNS: after the switch to Pi-hole, and after mgmt-01 (which runs Pi-hole) power-cycles. Pinned by Task 2 Step 5 and Task 5 Step 6.
-5. Periphery staying disconnected after Komodo Core restarts, or the onboarding key being recreated on every run. Pinned by Task 7 Steps 7 and 8.
+4. VMs losing DNS: after the switch to Pi-hole, and after mgmt-01 (which runs Pi-hole) power-cycles. Pinned by Task 3 Step 5 and Task 6 Step 6.
+5. Periphery staying disconnected after Komodo Core restarts, or the onboarding key being recreated on every run. Pinned by Task 8 Steps 7 and 8.
 
 ---
 
@@ -59,7 +59,7 @@ Run: `git switch -c komodo-phase-1`
 The Makefile still sources `.env` at this point.
 
 Run: `make check 2>&1 | tee /tmp/komodo-phase-1-baseline.log | tail -20`
-Expected: a `PLAY RECAP` with `failed=0` for every host. Keep the log: Task 8 compares against it. If a host fails here, the failure predates this plan: report it and stop.
+Expected: a `PLAY RECAP` with `failed=0` for every host. Keep the log: Task 9 compares against it. If a host fails here, the failure predates this plan: report it and stop.
 
 ---
 
@@ -158,7 +158,7 @@ chmod 600 ~/.config/sops/age/keys.txt
 grep 'public key' ~/.config/sops/age/keys.txt
 ```
 
-Expected: `# public key: age1...`. SOPS finds this file by default. Task 8 reminds the user to copy it into their password manager.
+Expected: `# public key: age1...`. SOPS finds this file by default. Task 9 reminds the user to copy it into their password manager.
 
 - [ ] **Step 5: Write `.sops.yaml`**
 
@@ -294,7 +294,7 @@ Expected: every line starts with `ok:`. A `changed:` line means a SOPS value dif
 
 - [ ] **Step 11: Leave `.env` in place**
 
-It also holds `OUTLINE_API_TOKEN`, which Ansible never used. Nothing reads it now. Task 8 tells the user it can be deleted once they no longer need that token there.
+It also holds `OUTLINE_API_TOKEN`, which Ansible never used. Nothing reads it now. Task 9 tells the user it can be deleted once they no longer need that token there.
 
 - [ ] **Step 12: Confirm a missing key fails loudly**
 
@@ -310,7 +310,68 @@ git commit -m "Replace .env with SOPS-encrypted group vars"
 
 ---
 
-### Task 2: Every VM resolves through Pi-hole
+### Task 2: Reach VMs over Tailscale subnet routes
+
+**Files:**
+- Modify: `inventories/homelab/group_vars/vm.yml` (remove `ansible_ssh_common_args`)
+- Modify: `playbooks/vms.yml` ("Prepare VMs" play)
+
+**Interfaces:**
+- Produces: every playbook except `vms.yml` connects to the VMs at their `10.10.x.x` addresses directly, over mgmt-01's Tailscale subnet routes. `vms.yml`'s "Prepare VMs" play still jumps through hv-01. Host keys are unaffected: `known_hosts` is keyed by the same addresses.
+
+- [ ] **Step 1: Write the failing check**
+
+Run: `.venv/bin/ansible vm -m ansible.builtin.ping -vvv 2>&1 | grep -c 'ProxyCommand'`
+Expected: FAIL, a count above `0` (every connection goes through hv-01 today).
+
+- [ ] **Step 2: Remove the hv-01 hop from the VM group**
+
+In `inventories/homelab/group_vars/vm.yml`, delete the `ansible_ssh_common_args` entry (its two lines), keeping `ansible_host`, `compose_root` and anything added later.
+
+- [ ] **Step 3: Keep the hv-01 hop for provisioning only**
+
+In `playbooks/vms.yml`, give the "Prepare VMs" play a `vars` block:
+
+```yaml
+- name: Prepare VMs
+  hosts: vm
+  gather_facts: false
+  become: true
+
+  # On a fresh build mgmt-01, which carries the Tailscale subnet routes, is itself one of these VMs.
+  vars:
+    ansible_ssh_common_args: >-
+      -o ProxyCommand="ssh -p {{ hostvars[hypervisor_host].ansible_port }} {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p"
+
+  roles:
+    - vms/guest
+```
+
+- [ ] **Step 4: Re-run the check from Step 1**
+
+Expected: PASS, `0`.
+
+Run: `.venv/bin/ansible vm -m ansible.builtin.ping`
+Expected: `SUCCESS` for all four VMs.
+
+- [ ] **Step 5: Confirm provisioning still goes through hv-01**
+
+Run: `.venv/bin/ansible-playbook playbooks/vms.yml --check -vvv 2>&1 | tee /tmp/komodo-phase-1-vms.log | grep -c 'ProxyCommand'`
+Expected: a count above `0`.
+
+Run: `grep -E '^\S+\s+: ok=' /tmp/komodo-phase-1-vms.log`
+Expected: `failed=0` and `unreachable=0` for every host.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add inventories/homelab/group_vars/vm.yml playbooks/vms.yml
+git commit -m "Reach VMs over Tailscale subnet routes after provisioning"
+```
+
+---
+
+### Task 3: Every VM resolves through Pi-hole
 
 **Files:**
 - Modify: `inventories/homelab/group_vars/vm.yml` (add `vm_dns_server`)
@@ -320,7 +381,7 @@ git commit -m "Replace .env with SOPS-encrypted group vars"
 
 **Interfaces:**
 - Consumes: `roles/vms/guest/tasks/dns.yml`, unchanged, which reads `vm_dns_server`.
-- Produces: every VM's systemd-resolved uses Pi-hole (`10.10.10.10`), so containers on every VM resolve `*.service.consul` with no `dns:` setting. Task 7's Periphery relies on this on mgmt-01.
+- Produces: every VM's systemd-resolved uses Pi-hole (`10.10.10.10`), so containers on every VM resolve `*.service.consul` with no `dns:` setting. Task 8's Periphery relies on this on mgmt-01.
 
 - [ ] **Step 1: Write the failing check**
 
@@ -386,7 +447,7 @@ git commit -m "Resolve DNS through Pi-hole on every VM"
 
 ---
 
-### Task 3: Consul registrator on every VM
+### Task 4: Consul registrator on every VM
 
 **Files:**
 - Create: `roles/core/registrator/tasks/main.yml`
@@ -503,7 +564,7 @@ git commit -m "Add a Consul registrator to every VM"
 
 ---
 
-### Task 4: One wildcard tunnel rule
+### Task 5: One wildcard tunnel rule
 
 **Files:**
 - Modify: `roles/tunnel/cloudflared/tasks/main.yml` ("Point tunnel hostnames at the tunnel")
@@ -583,15 +644,15 @@ git commit -m "Route every public hostname through one wildcard tunnel rule"
 
 ---
 
-### Task 5: Give mgmt-01 3 GB
+### Task 6: Give mgmt-01 3 GB
 
 **Files:**
 - Modify: `inventories/homelab/host_vars/mgmt-01/main.yml` (`memory_mb`)
 
 **Interfaces:**
-- Produces: mgmt-01 with 3072 MB, for Task 6's Komodo Core and MongoDB.
+- Produces: mgmt-01 with 3072 MB, for Task 7's Komodo Core and MongoDB.
 
-mgmt-01 runs Pi-hole (now DNS for every VM) and the Tailscale subnet router, so both are down for a minute or two while it restarts. Ansible keeps working throughout, because it reaches hv-01 over hv-01's own Tailscale address.
+mgmt-01 runs Pi-hole (now DNS for every VM) and carries the Tailscale subnet routes, so both are down for a minute or two while it restarts. The `virsh` steps still work, because they go to hv-01 over hv-01's own Tailscale address. Connections to the VMs resume once mgmt-01 is back.
 
 - [ ] **Step 1: Write the failing check**
 
@@ -646,7 +707,7 @@ git commit -m "Give mgmt-01 3 GB for the Komodo management stack"
 
 ---
 
-### Task 6: Komodo Core on mgmt-01
+### Task 7: Komodo Core on mgmt-01
 
 **Files:**
 - Create: `roles/komodo/core/files/compose.yml`
@@ -658,9 +719,9 @@ git commit -m "Give mgmt-01 3 GB for the Komodo management stack"
 
 **Interfaces:**
 - Consumes: `komodo_secrets.database_password`, `.jwt_secret`, `.init_admin_password` (Task 1); `core/consul` `tasks_from: register`.
-- Produces: Komodo Core at `https://komodo.ops.home.arpa`, registered in Consul as `komodo` on port 9120, so `ws://komodo.service.consul:9120` reaches it. Local login `admin` with `komodo_secrets.init_admin_password`. A reusable onboarding key named `ansible` whose private key is in `{{ compose_root }}/komodo/onboarding.key` on mgmt-01 (root, `0600`), which Task 7 reads.
+- Produces: Komodo Core at `https://komodo.ops.home.arpa`, registered in Consul as `komodo` on port 9120, so `ws://komodo.service.consul:9120` reaches it. Local login `admin` with `komodo_secrets.init_admin_password`. A reusable onboarding key named `ansible` whose private key is in `{{ compose_root }}/komodo/onboarding.key` on mgmt-01 (root, `0600`), which Task 8 reads.
 
-Komodo's HTTP API, used below and in Task 7: log in with `POST /auth/login/LoginLocalUser` and body `{"username": ..., "password": ...}`; the response is `{"type": "Jwt", "data": {"jwt": "..."}}`. Other calls are `POST /read/<Request>` or `POST /write/<Request>` with a JSON body and the header `authorization: <jwt>`.
+Komodo's HTTP API, used below and in Task 8: log in with `POST /auth/login/LoginLocalUser` and body `{"username": ..., "password": ...}`; the response is `{"type": "Jwt", "data": {"jwt": "..."}}`. Other calls are `POST /read/<Request>` or `POST /write/<Request>` with a JSON body and the header `authorization: <jwt>`.
 
 - [ ] **Step 1: Write the failing check**
 
@@ -923,7 +984,7 @@ Expected: mode `0600` and a non-zero size.
 - [ ] **Step 8: Check memory on mgmt-01**
 
 Run: `.venv/bin/ansible mgmt-01 -b -m ansible.builtin.shell -a "free -m; docker stats --no-stream --format '{{ '{{' }}.Name{{ '}}' }} {{ '{{' }}.MemUsage{{ '}}' }}' | sort"`
-Expected: `available` above 700 MB. Record `komodo-core` and `komodo-mongo` usage for the Task 8 report: the spec estimated 400 to 700 MB for the whole new stack.
+Expected: `available` above 700 MB. Record `komodo-core` and `komodo-mongo` usage for the Task 9 report: the spec estimated 400 to 700 MB for the whole new stack.
 
 - [ ] **Step 9: Commit**
 
@@ -934,7 +995,7 @@ git commit -m "Deploy Komodo Core on mgmt-01"
 
 ---
 
-### Task 7: Komodo Periphery on every stack host
+### Task 8: Komodo Periphery on every stack host
 
 **Files:**
 - Create: `roles/komodo/periphery/templates/compose.yml.j2`
@@ -943,7 +1004,7 @@ git commit -m "Deploy Komodo Core on mgmt-01"
 - Modify: `inventories/homelab/hosts.ini` (add `komodo_periphery`)
 
 **Interfaces:**
-- Consumes: Komodo Core registered as `komodo` in Consul, and `{{ compose_root }}/komodo/onboarding.key` on the `komodo_core` host (Task 6).
+- Consumes: Komodo Core registered as `komodo` in Consul, and `{{ compose_root }}/komodo/onboarding.key` on the `komodo_core` host (Task 7).
 - Produces: Servers `mgmt-01`, `svc-apps-01` and `svc-db-01` in Komodo, state `Ok`.
 
 This helper logs in from the workstation. Steps 1, 6 and 8 use it:
@@ -1124,7 +1185,7 @@ git commit -m "Connect every stack host to Komodo with Periphery"
 
 ---
 
-### Task 8: Full check and report
+### Task 9: Full check and report
 
 **Files:** none.
 
@@ -1149,7 +1210,7 @@ Expected: no output.
 
 Report:
 - The branch `komodo-phase-1`, its commits, and whether every check passed.
-- mgmt-01's memory after Komodo (Task 6 Step 8) against the spec's 400 to 700 MB estimate.
+- mgmt-01's memory after Komodo (Task 7 Step 8) against the spec's 400 to 700 MB estimate.
 - Komodo is at `https://komodo.ops.home.arpa`, user `admin`, password from `.venv/bin/sops decrypt --extract '["komodo_secrets"]["init_admin_password"]' inventories/homelab/group_vars/all.sops.yml`.
 - Two things only they can do: copy `~/.config/sops/age/keys.txt` into their password manager (without it, `all.sops.yml` can never be decrypted again), and delete `.env` once they no longer need `OUTLINE_API_TOKEN` in it.
 - Phase 2 (create `homelab-komodo`, the Resource Sync bootstrap, OpenBao) needs its own plan.
