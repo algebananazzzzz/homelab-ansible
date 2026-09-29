@@ -12,7 +12,8 @@
     status_code: [200, 400, 401, 403, 404, 409, 429]
   register: cloudflare_response
   changed_when: (request.method | default('GET')) != 'GET'
-  check_mode: false
+  # Lookups run in check mode because later tasks need their results; writes do not.
+  check_mode: "{{ false if (request.method | default('GET')) == 'GET' else ansible_check_mode }}"
   delegate_to: localhost
   become: false
   no_log: true
@@ -23,3 +24,4 @@
     fail_msg: >-
       Cloudflare API {{ request.method | default('GET') }} {{ request.path }}
       returned {{ cloudflare_response.status }}: {{ cloudflare_response.json.errors | default(cloudflare_response.msg | default('')) }}
+  when: cloudflare_response is not skipped
