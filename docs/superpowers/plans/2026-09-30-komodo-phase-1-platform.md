@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Prepare `homelab-ansible` so Komodo can take over applications: secrets in SOPS, every VM resolving through Pi-hole, a Consul registrator on every VM, one wildcard tunnel rule, a 3 GB mgmt-01, and Komodo Core plus Periphery deployed and connected by Ansible.
+**Goal:** Prepare `homelab-ansible` so Komodo can take over applications: platform secrets in SOPS, apps out of `site.yml`, every VM resolving through Pi-hole, a Consul registrator on every VM, one wildcard tunnel rule, a 3 GB mgmt-01, and Komodo Core plus Periphery deployed and connected by Ansible.
 
-**Architecture:** Every change is platform-side and leaves the running apps untouched. The existing `applications/compose` role, `.hcl` registrations and per-app databases keep working throughout; phase 3 migrates stacks and phase 4 deletes the app code. Each task ends with a check against the live homelab. The plan runs without the user: tools install into `.venv` without sudo, and Ansible creates Komodo's onboarding key itself.
+**Architecture:** Every change is platform-side and leaves the running apps untouched. The running databases and apps are left alone: `site.yml` stops deploying them in Task 1, their `.hcl` registrations stay, and their playbooks can still be run by hand with `.env`; phase 3 migrates stacks and phase 4 deletes the app code. Each task ends with a check against the live homelab. The plan runs without the user: tools install into `.venv` without sudo, and Ansible creates Komodo's onboarding key itself.
 
 **Tech Stack:** Ansible (ansible-core 2.21.4, `community.docker`, `community.sops`), SOPS 3.13.3 with age 1.3.2, Docker Compose, systemd-resolved, Consul 1.21.3, serviceregistrator v0.8.1, cloudflared 2026.9.1, Komodo 2.3.3, MongoDB 8.0.32.
 
@@ -63,7 +63,7 @@ Expected: a `PLAY RECAP` with `failed=0` for every host. Keep the log: Task 9 co
 
 ---
 
-### Task 1: Replace `.env` with SOPS
+### Task 1: Platform secrets in SOPS, apps out of `site.yml`
 
 **Files:**
 - Create: `.sops.yaml`
@@ -71,25 +71,23 @@ Expected: a `PLAY RECAP` with `failed=0` for every host. Keep the log: Task 9 co
 - Modify: `Makefile`
 - Modify: `collections/requirements.yml`
 - Modify: `ansible.cfg`
-- Modify: `inventories/homelab/group_vars/all.yml` (the `cloudflare:` and `env_secrets:` blocks)
-- Modify: `roles/databases/postgres/tasks/main.yml` (first two tasks)
-- Modify: `roles/databases/redis/tasks/main.yml` (first two tasks)
-- Modify: `roles/applications/authelia/tasks/main.yml` ("Require Authelia user password", "Write Authelia user password")
-- Modify: `roles/applications/compose/tasks/secrets.yml`
-- Modify: `roles/tunnel/cloudflared/tasks/main.yml` (first task)
+- Modify: `inventories/homelab/group_vars/all.yml` (the `cloudflare:` block, and a comment above `env_secrets:`)
+- Modify: `playbooks/site.yml` (stop importing `databases.yml` and `applications.yml`)
+- Modify: `roles/tunnel/cloudflared/tasks/main.yml` (first task's message)
 
 **Interfaces:**
-- Produces: variables `cloudflare_api_token`, `cloudflare_tunnel_secret`, `static_secrets` (dict: `postgres_password`, `redis_password`, `authelia_user_password`) and `komodo_secrets` (dict: `database_password`, `jwt_secret`, `init_admin_password`). `env_secrets` no longer exists. `.venv/bin/sops` and `.venv/bin/age-keygen` exist after `make setup`.
+- Produces: variables `cloudflare_api_token`, `cloudflare_tunnel_secret` and `komodo_secrets` (dict: `database_password`, `jwt_secret`, `init_admin_password`), decrypted from SOPS. `.venv/bin/sops` and `.venv/bin/age-keygen` exist after `make setup`.
+- `make deploy` and `make check` no longer run `databases.yml` or `applications.yml`. The databases and apps keep running untouched until phase 3 moves them to Komodo. Those two playbooks, their roles and `env_secrets` stay unchanged and still read `.env`, so either can still be run by hand during the transition: `set -a; . ./.env; set +a; .venv/bin/ansible-playbook playbooks/applications.yml`.
 
 - [ ] **Step 1: Write the failing check**
 
 Run from an environment without `.env` loaded:
 
 ```bash
-env -i HOME="$HOME" PATH="$PATH" .venv/bin/ansible mgmt-01 -m ansible.builtin.debug -a 'msg={{ static_secrets.postgres_password | length > 0 and komodo_secrets.jwt_secret | length > 0 and cloudflare.api_token | length > 0 }}'
+env -i HOME="$HOME" PATH="$PATH" .venv/bin/ansible mgmt-01 -m ansible.builtin.debug -a 'msg={{ komodo_secrets.jwt_secret | length > 0 and cloudflare.api_token | length > 0 }}'
 ```
 
-Expected: FAIL with `'static_secrets' is undefined`.
+Expected: FAIL with `'komodo_secrets' is undefined`.
 
 - [ ] **Step 2: Install SOPS and age into `.venv` from `make setup`**
 
@@ -176,7 +174,7 @@ Expected: the rule with an `age1...` recipient.
 
 - [ ] **Step 6: Create the encrypted secrets file**
 
-This reads the current values from `.env`, generates the Komodo secrets, and never prints a value:
+This reads the Cloudflare values from `.env`, generates the Komodo secrets, and never prints a value:
 
 ```bash
 umask 077
@@ -188,11 +186,6 @@ import json, os, secrets
 print(json.dumps({
     "cloudflare_api_token": os.environ["CLOUDFLARE_API_TOKEN"],
     "cloudflare_tunnel_secret": os.environ["CLOUDFLARE_TUNNEL_SECRET"],
-    "static_secrets": {
-        "postgres_password": os.environ["POSTGRES_PASSWORD"],
-        "redis_password": os.environ["REDIS_PASSWORD"],
-        "authelia_user_password": os.environ["AUTHELIA_USER_PASSWORD"],
-    },
     "komodo_secrets": {
         "database_password": secrets.token_hex(32),
         "jwt_secret": secrets.token_hex(32),
@@ -206,11 +199,11 @@ rm -f "$plain"
 grep -c 'ENC\[' inventories/homelab/group_vars/all.sops.yml
 ```
 
-Expected: `9` (eight values plus SOPS's own MAC). The file shows the keys in plain text with `ENC[AES256_GCM,...]` values.
+Expected: `6` (five values plus SOPS's own MAC). The file shows the keys in plain text with `ENC[AES256_GCM,...]` values.
 
 - [ ] **Step 7: Point `group_vars/all.yml` at the SOPS variables**
 
-Replace the `cloudflare:` block and the `env_secrets:` block at the end of `inventories/homelab/group_vars/all.yml` with:
+In `inventories/homelab/group_vars/all.yml`, replace the `cloudflare:` block with:
 
 ```yaml
 cloudflare:
@@ -219,57 +212,13 @@ cloudflare:
   tunnel_secret: "{{ cloudflare_tunnel_secret }}"
 ```
 
-- [ ] **Step 8: Rename `env_secrets` to `static_secrets` in the roles**
-
-`roles/databases/postgres/tasks/main.yml`, first two tasks:
+Leave the `env_secrets:` block as it is, and put this comment directly above it:
 
 ```yaml
-- name: Require the PostgreSQL password
-  ansible.builtin.assert:
-    that:
-      - static_secrets.postgres_password | length > 0
-    fail_msg: static_secrets.postgres_password is empty. Set it with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`.
-
-- name: Write the PostgreSQL password
-  ansible.builtin.copy:
-    content: "{{ static_secrets.postgres_password }}"
+# Read from .env only by databases.yml and applications.yml, which site.yml no longer runs. Both go away in phase 4.
 ```
 
-`roles/databases/redis/tasks/main.yml`, first two tasks:
-
-```yaml
-- name: Require the Redis password
-  ansible.builtin.assert:
-    that:
-      - static_secrets.redis_password | length > 0
-    fail_msg: static_secrets.redis_password is empty. Set it with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`.
-
-- name: Write the Redis password
-  ansible.builtin.copy:
-    content: "{{ static_secrets.redis_password }}"
-```
-
-`roles/applications/authelia/tasks/main.yml`:
-
-```yaml
-- name: Require Authelia user password
-  ansible.builtin.assert:
-    that:
-      - static_secrets.authelia_user_password | length > 0
-    fail_msg: static_secrets.authelia_user_password is empty. Set it with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`.
-
-- name: Write Authelia user password
-  ansible.builtin.copy:
-    content: "{{ static_secrets.authelia_user_password }}"
-```
-
-`roles/applications/compose/tasks/secrets.yml`: every `env_secrets` becomes `static_secrets`, and the `fail_msg` becomes:
-
-```yaml
-    fail_msg: "static_secrets.{{ item }} is empty. Set it with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`."
-```
-
-`roles/tunnel/cloudflared/tasks/main.yml`, first task's `fail_msg`:
+In `roles/tunnel/cloudflared/tasks/main.yml`, change the first task's `fail_msg` to:
 
 ```yaml
     fail_msg: >-
@@ -277,35 +226,50 @@ cloudflare:
       base64 encoded) with `.venv/bin/sops edit inventories/homelab/group_vars/all.sops.yml`.
 ```
 
-Run: `grep -rn "env_secrets\|sourcing .env\|ansible.builtin.env" roles playbooks inventories`
-Expected: no output.
+- [ ] **Step 8: Stop running the database and app playbooks from `site.yml`**
+
+`playbooks/site.yml`:
+
+```yaml
+---
+# Each playbook depends on the ones above it.
+# databases.yml and applications.yml are no longer run here: Komodo takes over what they deploy.
+- import_playbook: vms.yml
+- import_playbook: core.yml
+- import_playbook: observability.yml
+- import_playbook: proxy.yml
+- import_playbook: tunnel.yml
+```
+
+Run: `grep -rn "ansible.builtin.env" inventories roles playbooks`
+Expected: only the three `env_secrets` lines in `inventories/homelab/group_vars/all.yml`.
 
 - [ ] **Step 9: Run the check from Step 1 again**
 
 Expected: PASS, `"msg": true`.
 
-- [ ] **Step 10: Confirm the values match what is deployed**
+- [ ] **Step 10: Confirm the Cloudflare values match what is deployed**
 
 Run: `env -i HOME="$HOME" PATH="$PATH" make check 2>&1 | tee /tmp/komodo-phase-1-task-1.log | tail -20`
 Expected: `failed=0` for every host.
 
-Run: `grep -A3 -E "TASK \[.*(Write the PostgreSQL password|Write the Redis password|Write Authelia user password|Write static service secrets|Write Cloudflare tunnel credentials)" /tmp/komodo-phase-1-task-1.log | grep -E "^(changed|ok):"`
-Expected: every line starts with `ok:`. A `changed:` line means a SOPS value differs from the deployed one: stop and compare with `.env`.
+Run: `grep -A3 "TASK \[.*Write Cloudflare tunnel credentials" /tmp/komodo-phase-1-task-1.log | grep -E "^(changed|ok):"`
+Expected: `ok:`. A `changed:` line means the SOPS value differs from the deployed one: stop and compare with `.env`.
 
 - [ ] **Step 11: Leave `.env` in place**
 
-It also holds `OUTLINE_API_TOKEN`, which Ansible never used. Nothing reads it now. Task 9 tells the user it can be deleted once they no longer need that token there.
+It still holds the Postgres, Redis and Authelia passwords for running `databases.yml` or `applications.yml` by hand, and phase 3 copies them into OpenBao. It also holds `OUTLINE_API_TOKEN`, which Ansible never used.
 
 - [ ] **Step 12: Confirm a missing key fails loudly**
 
-Run: `env -i HOME="$HOME" PATH="$PATH" SOPS_AGE_KEY_FILE=/nonexistent .venv/bin/ansible mgmt-01 -m ansible.builtin.debug -a 'msg={{ static_secrets.postgres_password }}'`
+Run: `env -i HOME="$HOME" PATH="$PATH" SOPS_AGE_KEY_FILE=/nonexistent .venv/bin/ansible mgmt-01 -m ansible.builtin.debug -a 'msg={{ cloudflare.api_token }}'`
 Expected: FAIL with a SOPS decryption error. It must not print an empty `msg`.
 
 - [ ] **Step 13: Commit**
 
 ```bash
-git add .sops.yaml inventories/homelab/group_vars/all.sops.yml Makefile collections/requirements.yml ansible.cfg inventories/homelab/group_vars/all.yml roles/databases/postgres/tasks/main.yml roles/databases/redis/tasks/main.yml roles/applications/authelia/tasks/main.yml roles/applications/compose/tasks/secrets.yml roles/tunnel/cloudflared/tasks/main.yml
-git commit -m "Replace .env with SOPS-encrypted group vars"
+git add .sops.yaml inventories/homelab/group_vars/all.sops.yml Makefile collections/requirements.yml ansible.cfg inventories/homelab/group_vars/all.yml playbooks/site.yml roles/tunnel/cloudflared/tasks/main.yml
+git commit -m "Move platform secrets to SOPS and stop deploying apps from site.yml"
 ```
 
 ---
@@ -1196,8 +1160,20 @@ Expected: `failed=0` for every host.
 
 - [ ] **Step 2: Compare with the baseline**
 
-Run: `diff <(grep -E '^\S+\s+: ok=' /tmp/komodo-phase-1-baseline.log | awk '{print $1, $4}') <(grep -E '^\S+\s+: ok=' /tmp/komodo-phase-1-final.log | awk '{print $1, $4}')`
-Expected: no output: every host reports the same `changed=` count in check mode as before this plan. A higher count means a task now drifts on every run: find it in the final log (`grep -B1 '^changed:'`) and fix it before finishing.
+The baseline also ran `databases.yml` and `applications.yml`, so hosts may now report fewer changes. None may report more:
+
+```bash
+python3 - <<'EOF'
+import re
+def changed(path):
+    return {m[1]: int(m[2]) for m in re.finditer(r'^(\S+)\s+: ok=\d+\s+changed=(\d+)', open(path).read(), re.M)}
+before, after = changed('/tmp/komodo-phase-1-baseline.log'), changed('/tmp/komodo-phase-1-final.log')
+worse = {host: (before.get(host, 0), n) for host, n in after.items() if n > before.get(host, 0)}
+print(worse or 'no host drifts more than before')
+EOF
+```
+
+Expected: `no host drifts more than before`. Otherwise a task now reports a change on every run: find it in the final log (`grep -B1 '^changed:'`) and fix it before finishing.
 
 - [ ] **Step 3: Confirm no app names crept into platform code**
 
@@ -1212,5 +1188,6 @@ Report:
 - The branch `komodo-phase-1`, its commits, and whether every check passed.
 - mgmt-01's memory after Komodo (Task 7 Step 8) against the spec's 400 to 700 MB estimate.
 - Komodo is at `https://komodo.ops.home.arpa`, user `admin`, password from `.venv/bin/sops decrypt --extract '["komodo_secrets"]["init_admin_password"]' inventories/homelab/group_vars/all.sops.yml`.
-- Two things only they can do: copy `~/.config/sops/age/keys.txt` into their password manager (without it, `all.sops.yml` can never be decrypted again), and delete `.env` once they no longer need `OUTLINE_API_TOKEN` in it.
+- One thing only they can do: copy `~/.config/sops/age/keys.txt` into their password manager. Without it, `all.sops.yml` can never be decrypted again.
+- `make deploy` no longer touches the databases or apps. They keep running, and `.env` stays until phase 3 has copied its passwords into OpenBao.
 - Phase 2 (create `homelab-komodo`, the Resource Sync bootstrap, OpenBao) needs its own plan.
