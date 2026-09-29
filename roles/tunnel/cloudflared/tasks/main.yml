@@ -54,11 +54,10 @@
     mode: "0600"
   no_log: true
 
-- name: Point tunnel hostnames at the tunnel
+- name: Point every public hostname at the tunnel
   ansible.builtin.include_tasks: dns.yml
-  loop: "{{ public_hostnames.values() | list }}"
-  loop_control:
-    loop_var: hostname
+  vars:
+    hostname: "*.{{ base_domain }}"
 
 - name: Create cloudflared directory
   ansible.builtin.file:

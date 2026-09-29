@@ -2,11 +2,10 @@ tunnel: {{ cloudflared_tunnel_id }}
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-{% for hostname in public_hostnames.values() %}
-  - hostname: {{ hostname }}
+  - hostname: "*.{{ base_domain }}"
     service: https://127.0.0.1:443
     originRequest:
-      originServerName: {{ hostname }}
+      # Traefik chooses its router and certificate from the SNI, so it must carry the requested name.
+      matchSNItoHost: true
       caPool: /etc/cloudflared/ca.crt
-{% endfor %}
   - service: http_status:404
