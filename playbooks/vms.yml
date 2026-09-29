@@ -37,8 +37,7 @@
 
   # On a fresh build mgmt-01, which carries the Tailscale subnet routes, is itself one of these VMs.
   vars:
-    ansible_ssh_common_args: >-
-      -o ProxyCommand="ssh -p {{ hostvars[hypervisor_host].ansible_port }} {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p"
+    ansible_ssh_common_args: "{{ vm_hypervisor_proxy_args }}"
 
   roles:
     - vms/guest
