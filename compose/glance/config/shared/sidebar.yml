@@ -10,6 +10,33 @@
   units: metric
   hour-format: 24h
 
+# arrivelah proxies LTA DataMall bus arrivals without needing an account key.
+- type: group
+  widgets:
+    - type: custom-api
+      title: Blk 22
+      cache: 30s
+      url: https://arrivelah2.busrouter.sg/?id=81179
+      template: &bus-arrivals |
+        {{ $shown := false }}
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .5rem 1rem; align-items: baseline; text-align: right; white-space: nowrap;">
+        {{ range .JSON.Array "services" }}
+          {{ if eq (.String "no") "10" "30" "30e" }}
+            {{ $shown = true }}
+            {{ $next := div (.Int "next.duration_ms") 60000 }}
+            <span class="size-h4 color-highlight" style="text-align: left;">{{ .String "no" }}</span>
+            <span class="size-h4">{{ if lt $next 1 }}Arr{{ else }}{{ $next }} min{{ end }}</span>
+            <span class="color-subdue">{{ if ne (.String "subsequent.time") "" }}{{ div (.Int "subsequent.duration_ms") 60000 }} min{{ end }}</span>
+          {{ end }}
+        {{ end }}
+        </div>
+        {{ if not $shown }}<p class="color-subdue">No 10, 30 or 30e buses right now</p>{{ end }}
+    - type: custom-api
+      title: Heng Mui Keng Terr
+      cache: 30s
+      url: https://arrivelah2.busrouter.sg/?id=16069
+      template: *bus-arrivals
+
 - type: custom-api
   title: Habits
   cache: 1m
