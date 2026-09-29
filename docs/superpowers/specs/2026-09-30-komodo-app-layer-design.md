@@ -37,7 +37,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 3. **The platform contract.** Stacks may rely on exactly this:
    - Docker and a Komodo Periphery on mgmt-01, svc-apps-01 and svc-db-01.
    - `SERVICE_*` container labels register a container in Consul through the registrator, and Traefik routes it from its Consul tags.
-   - Consul DNS (`*.service.consul`) resolves from every VM and container. The exception is containers on mgmt-01: Pi-hole runs there, so mgmt-01's own resolvers are public DNS (`1.1.1.1`, `9.9.9.9`), and a container there must set `dns: [10.10.10.10]` to resolve Consul names. Glance already does.
+   - Every VM resolves DNS through Pi-hole at `10.10.10.10`, configured at the VM level by Ansible, so Consul DNS (`*.service.consul`) and internal names resolve from every VM and every container without per-container `dns:` settings.
    - The internal CA certificate at `/usr/local/share/ca-certificates/homelab-ca.crt`.
    - The `authelia@file` Traefik middleware, which forwards to `authelia.service.consul:9091`.
    - Hostnames under `*.algebananazzzzz.com` reach Traefik through the Cloudflare tunnel.
@@ -56,7 +56,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
    - `komodo/core` on the `komodo_core` group (mgmt-01): Core and its MongoDB (decision 7), with Core registered in Consul as `komodo` and routed at `komodo.ops.home.arpa`. Its settings are environment variables, with secrets in a root-only `.env` rendered from SOPS. Phase 2 adds a mounted `config.toml`, because Komodo accepts `[[git_provider]]` only from a config file.
    - `komodo/periphery` on the `komodo_periphery` group (mgmt-01, svc-apps-01, svc-db-01): Periphery as a container, connecting out to Core at `ws://komodo.service.consul:9120` with `connect_as` set to the host's inventory name. This is Komodo v2's documented flow. Periphery authenticates with a reusable onboarding key on first connection, Core creates the Server entry, and the key pair Periphery generates is kept in a bind-mounted `keys/` directory so reconnections need no onboarding key.
 
-   Two values can only be created in Komodo's UI, once, after Core first starts: the onboarding key and an API key for Ansible. Both go into the platform SOPS file. The Periphery play fails with a message saying so until the onboarding key is present. In phase 2, the Core role uses the API key to ensure the Resource Sync pointing at `homelab-komodo`'s `komodo/` directory, and adds the GitHub token to Core's `[[git_provider]]` config. The repo URL is the only thing Ansible knows about the app layer.
+   Ansible bootstraps Periphery without manual steps. After starting Core, the Core role logs in with the initial admin credentials from SOPS and ensures a reusable onboarding key named `ansible`. Komodo shows a key's private half only when it is created, so the role keeps it in a root-only file next to Core's Compose file and replaces the key if that file is ever lost. The Periphery role reads that file from mgmt-01. In phase 2, the Core role uses the same login to ensure the Resource Sync pointing at `homelab-komodo`'s `komodo/` directory, and adds the GitHub token to Core's `[[git_provider]]` config. The repo URL is the only thing Ansible knows about the app layer.
 
    After `site.yml`, Komodo is running, every Periphery is connected, and (from phase 2) the Resource Sync exists. Stacks, Procedures and schedules all come from the sync.
 
@@ -64,7 +64,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 
 10. **Authelia is an app-layer stack.** Its OIDC client list lives in the app repo. `authelia@file` in `roles/proxy/traefik/files/dynamic.yml` stays on the platform, because it references a Consul name, not a deployment.
 
-11. **Platform secrets in SOPS + age.** An encrypted file in this repo replaces `.env`, read through `community.sops`. It holds the Cloudflare API token and tunnel secret, Komodo's secrets (Core's database password, JWT secret and initial admin password, the Periphery onboarding key, and Ansible's API key and secret), and the GitHub token for `homelab-komodo` while it is private. The age key lives on the workstation with a copy in the user's password manager. `POSTGRES_PASSWORD`, `REDIS_PASSWORD` and `AUTHELIA_USER_PASSWORD` leave `group_vars/all.yml`.
+11. **Platform secrets in SOPS + age.** An encrypted file in this repo replaces `.env`, read through `community.sops`. It holds the Cloudflare API token and tunnel secret, Komodo Core's secrets (its database password, JWT secret and initial admin password), and the GitHub token for `homelab-komodo` while it is private. The age key lives on the workstation with a copy in the user's password manager. `POSTGRES_PASSWORD`, `REDIS_PASSWORD` and `AUTHELIA_USER_PASSWORD` leave `group_vars/all.yml`.
 
 12. **App secrets in a single-node OpenBao.** Komodo secret Variables were rejected as the store: values are plaintext in Komodo's database, and creating or updating a variable writes the value into the Update log ([`api/write/variable.rs`](https://github.com/moghtech/komodo/blob/main/bin/core/src/api/write/variable.rs)). OpenBao was chosen over HashiCorp Vault. The two share an API and agent behaviour. Vault's one relevant advantage, registering itself in Consul natively, would need a platform-issued Consul token inside an app-layer stack, which breaks the split. OpenBao is MPL-licensed where Vault is under the BSL, and it offers a static-key auto-unseal if manual unsealing becomes a burden.
 
@@ -100,7 +100,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 
 Each phase gets its own implementation plan.
 
-1. **Platform preparation (this repo):** SOPS replacing `.env`, the registrator, the wildcard tunnel, the mgmt-01 resize, and `playbooks/komodo.yml` with the `komodo/core` and `komodo/periphery` roles.
+1. **Platform preparation (this repo):** SOPS replacing `.env`, every VM resolving through Pi-hole, the registrator, the wildcard tunnel, the mgmt-01 resize, and `playbooks/komodo.yml` with the `komodo/core` and `komodo/periphery` roles.
 2. **App repo and OpenBao:** create the app repo and its Resource Sync, deploy and initialise OpenBao, write the shared agent config and the per-app provisioning.
 3. **Stack migration** in the order above.
 4. **Cleanup (this repo):** delete `compose/`, `roles/applications/`, `roles/databases/`, `playbooks/applications.yml`, `playbooks/databases.yml`, both `host_vars/*/applications.yml`, `group_vars/authelia.yml`, `group_vars/postgres.yml`, the `authelia`, `applications`, `postgres`, `redis` and `mongo` inventory groups, and `public_hostnames`.
@@ -117,6 +117,7 @@ The user prioritised getting the split deployed and performing well over securit
 
 ## Known limits
 
+- Every VM, mgmt-01 included, depends on Pi-hole for DNS. While Pi-hole is down, no VM resolves names, including mgmt-01 when it needs to pull a new Pi-hole image. Ansible points VMs at Pi-hole only after deploying it, so a fresh build depends on Pi-hole no earlier than it does today.
 - Anyone with root on an app host can read that host's rendered secrets. Every approach considered shares this.
 - role_id and secret_id sit in plaintext in Komodo's database and Update log, and are usable from any host until the host-IP binding in Deferred hardening is added.
 - Rotating a secret re-renders on the next deploy, but a running app keeps its old value until its container is recreated.
