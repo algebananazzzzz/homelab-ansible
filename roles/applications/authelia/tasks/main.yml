@@ -171,6 +171,8 @@
     - configuration.yml
     - users_database.yml
   register: authelia_configuration
+  # The configuration embeds the OIDC signing key, which --diff would print.
+  no_log: true
 
 - name: Start Authelia
   community.docker.docker_compose_v2:
