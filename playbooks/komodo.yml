@@ -1,0 +1,8 @@
+---
+- name: Deploy Komodo Core
+  hosts: komodo_core
+  gather_facts: false
+  become: true
+
+  roles:
+    - komodo/core

@@ -1,0 +1,50 @@
+---
+- name: Create Komodo directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/komodo"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+# Compose interpolates ${VAR} in compose.yml from this file.
+- name: Write Komodo environment file
+  ansible.builtin.copy:
+    content: |
+      KOMODO_DATABASE_PASSWORD={{ komodo_secrets.database_password }}
+      KOMODO_JWT_SECRET={{ komodo_secrets.jwt_secret }}
+      KOMODO_INIT_ADMIN_PASSWORD={{ komodo_secrets.init_admin_password }}
+    dest: "{{ compose_root }}/komodo/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Write Komodo Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/komodo/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Start Komodo Core
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/komodo"
+    remove_orphans: true
+    wait: true
+
+- name: Register Komodo Core with Consul
+  ansible.builtin.include_role:
+    name: core/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: komodo
+      port: 9120
+      hostnames:
+        - komodo.ops.home.arpa
+      health_path: /version
+
+- name: Ensure the Periphery onboarding key
+  ansible.builtin.import_tasks: onboarding.yml

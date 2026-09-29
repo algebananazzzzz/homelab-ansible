@@ -1,0 +1,83 @@
+---
+- name: Wait for Komodo Core
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/version
+  register: komodo_core_version
+  until: komodo_core_version.status == 200
+  retries: 30
+  delay: 2
+  check_mode: false
+
+- name: Log in to Komodo Core
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/auth/login/LoginLocalUser
+    method: POST
+    body_format: json
+    body:
+      username: admin
+      password: "{{ komodo_secrets.init_admin_password }}"
+  register: komodo_login
+  check_mode: false
+  no_log: true
+
+- name: List onboarding keys
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/read/ListOnboardingKeys
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body: {}
+  register: komodo_onboarding_keys
+  check_mode: false
+  no_log: true
+
+- name: Check the stored onboarding key
+  ansible.builtin.stat:
+    path: "{{ compose_root }}/komodo/onboarding.key"
+  register: komodo_onboarding_key_file
+
+- name: Record existing onboarding keys named ansible
+  ansible.builtin.set_fact:
+    komodo_ansible_onboarding_keys: "{{ komodo_onboarding_keys.json | selectattr('name', 'equalto', 'ansible') | list }}"
+
+# Komodo returns a private key only when it is created, so a key whose stored copy is gone is useless.
+- name: Delete an onboarding key whose private key was lost
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/write/DeleteOnboardingKey
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body:
+      public_key: "{{ item.public_key }}"
+  loop: "{{ komodo_ansible_onboarding_keys }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not komodo_onboarding_key_file.stat.exists
+  changed_when: true
+  no_log: true
+
+- name: Create the onboarding key
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/write/CreateOnboardingKey
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body:
+      name: ansible
+  register: komodo_onboarding_key_created
+  when: not komodo_onboarding_key_file.stat.exists or komodo_ansible_onboarding_keys | length == 0
+  changed_when: true
+  no_log: true
+
+- name: Store the onboarding key
+  ansible.builtin.copy:
+    content: "{{ komodo_onboarding_key_created.json.private_key }}"
+    dest: "{{ compose_root }}/komodo/onboarding.key"
+    owner: root
+    group: root
+    mode: "0600"
+  when: komodo_onboarding_key_created is not skipped
+  no_log: true

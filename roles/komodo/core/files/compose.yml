@@ -1,0 +1,51 @@
+name: komodo
+
+x-komodo-skip: &komodo-skip
+  # Keeps Komodo's "stop all containers" actions from stopping Komodo itself.
+  komodo.skip: ""
+
+services:
+  mongo:
+    container_name: komodo-mongo
+    image: mongo:8.0.32
+    command: ["--quiet", "--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: komodo
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+    labels: *komodo-skip
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    restart: unless-stopped
+
+  core:
+    container_name: komodo-core
+    image: ghcr.io/moghtech/komodo-core:2.3.3
+    init: true
+    depends_on:
+      - mongo
+    ports:
+      - "9120:9120/tcp"
+    environment:
+      TZ: Asia/Singapore
+      KOMODO_HOST: https://komodo.ops.home.arpa
+      KOMODO_TITLE: HomeLab
+      KOMODO_DATABASE_ADDRESS: mongo:27017
+      KOMODO_DATABASE_USERNAME: komodo
+      KOMODO_DATABASE_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+      KOMODO_JWT_SECRET: ${KOMODO_JWT_SECRET}
+      KOMODO_LOCAL_AUTH: "true"
+      KOMODO_INIT_ADMIN_USERNAME: admin
+      KOMODO_INIT_ADMIN_PASSWORD: ${KOMODO_INIT_ADMIN_PASSWORD}
+      KOMODO_DISABLE_USER_REGISTRATION: "true"
+    labels: *komodo-skip
+    volumes:
+      - ./keys:/config/keys
+      - ./backups:/backups
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+    name: homelab-komodo-mongo-data
+  mongo-config:
+    name: homelab-komodo-mongo-config
