@@ -17,20 +17,6 @@
     vm_disk_path: "{{ storage_root }}/{{ vm.name }}/{{ vm.name }}.qcow2"
     vm_cloud_init_iso_path: "{{ storage_root }}/{{ vm.name }}/seed.iso"
 
-- name: Create VM directory
-  ansible.builtin.file:
-    path: "{{ vm_directory }}"
-    state: directory
-    owner: root
-    group: kvm
-    mode: "0770"
-
-- name: Prepare VM disk
-  ansible.builtin.import_tasks: disk.yml
-
-- name: Prepare cloud-init configuration
-  ansible.builtin.import_tasks: cloud_init.yml
-
 - name: Check whether VM is defined
   ansible.builtin.command:
     argv:
@@ -41,6 +27,24 @@
   changed_when: false
   failed_when: false
   check_mode: false
+
+# cloud-init reads the seed only on an instance's first boot, so an existing VM has no use for these files.
+- name: Create VM directory
+  ansible.builtin.file:
+    path: "{{ vm_directory }}"
+    state: directory
+    owner: root
+    group: kvm
+    mode: "0770"
+  when: vm_domain_lookup_result.rc != 0
+
+- name: Prepare VM disk
+  ansible.builtin.import_tasks: disk.yml
+  when: vm_domain_lookup_result.rc != 0
+
+- name: Prepare cloud-init configuration
+  ansible.builtin.import_tasks: cloud_init.yml
+  when: vm_domain_lookup_result.rc != 0
 
 - name: Define and start VM
   ansible.builtin.command:
@@ -96,6 +100,7 @@
       - virsh
       - start
       - "{{ vm.name }}"
+  register: vm_start_result
   when: vm_domain_info_result.stdout is not regex('(?m)^State:\s+running$')
 
 - name: Use reserved VM address
@@ -127,7 +132,8 @@
   ansible.builtin.wait_for:
     host: "{{ vm_address }}"
     port: 22
-    delay: 5
+    # Only a VM that is just booting needs the grace period; a running one answers immediately.
+    delay: "{{ 5 if vm_domain_lookup_result.rc != 0 or vm_start_result is changed else 0 }}"
     timeout: 300
 
 # Inventory derives ansible_host from a reserved address; a VM on a dynamic lease only has one after this.
