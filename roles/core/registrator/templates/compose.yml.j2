@@ -1,0 +1,13 @@
+name: registrator
+
+services:
+  registrator:
+    container_name: registrator
+    image: metabrainz/serviceregistrator:v0.8.1
+    command:
+      - --ip={{ ansible_host }}
+    # The Consul agent's API is on the host's loopback.
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped

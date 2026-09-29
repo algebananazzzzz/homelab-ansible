@@ -36,6 +36,15 @@
   roles:
     - core/consul
 
+# Registers containers from their SERVICE_* labels, so stacks never write Consul definitions themselves.
+- name: Deploy Consul registrator
+  hosts: vm
+  gather_facts: false
+  become: true
+
+  roles:
+    - core/registrator
+
 - name: Configure Tailscale
   hosts: tailscale
   gather_facts: true
