@@ -34,16 +34,25 @@ services:
       KOMODO_DATABASE_USERNAME: komodo
       KOMODO_DATABASE_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
       KOMODO_JWT_SECRET: ${KOMODO_JWT_SECRET}
+      # Local admin is the way in while Authelia is down, since Authelia runs as a Komodo stack.
       KOMODO_LOCAL_AUTH: "true"
       KOMODO_INIT_ADMIN_USERNAME: admin
       KOMODO_INIT_ADMIN_PASSWORD: ${KOMODO_INIT_ADMIN_PASSWORD}
-      KOMODO_DISABLE_USER_REGISTRATION: "true"
+      KOMODO_DISABLE_LOCAL_USER_REGISTRATION: "true"
+      # A new OIDC user starts disabled, so signing in to Authelia alone grants nothing until an admin enables the user.
+      KOMODO_DISABLE_OIDC_USER_REGISTRATION: "false"
+      KOMODO_OIDC_ENABLED: "true"
+      KOMODO_OIDC_PROVIDER: https://auth.algebananazzzzz.com
+      KOMODO_OIDC_CLIENT_ID: komodo
+      KOMODO_OIDC_CLIENT_SECRET: ${KOMODO_OIDC_CLIENT_SECRET}
       # Stacks only see a pushed file change after this poll, so it matches the 5-minute sync schedule.
       KOMODO_RESOURCE_POLL_INTERVAL: 5-min
     labels: *komodo-skip
     volumes:
       - ./keys:/config/keys
       - ./backups:/backups
+      # Authelia's hostname resolves to Traefik, whose certificate only the host's bundle (with the homelab CA) trusts.
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     restart: unless-stopped
 
 volumes:

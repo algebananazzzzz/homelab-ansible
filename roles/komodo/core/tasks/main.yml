@@ -14,6 +14,7 @@
       KOMODO_DATABASE_PASSWORD={{ komodo_secrets.database_password }}
       KOMODO_JWT_SECRET={{ komodo_secrets.jwt_secret }}
       KOMODO_INIT_ADMIN_PASSWORD={{ komodo_secrets.init_admin_password }}
+      KOMODO_OIDC_CLIENT_SECRET={{ komodo_secrets.oidc_client_secret }}
     dest: "{{ compose_root }}/komodo/.env"
     owner: root
     group: root
