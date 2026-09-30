@@ -31,6 +31,10 @@ http:
       rule: Host(`pihole.ops.home.arpa`)
       service: pihole-dashboard
       tls: {}
+  # For stacks that serve their own self-signed TLS: traffic stays encrypted, but the backend certificate is not verified.
+  serversTransports:
+    self-signed:
+      insecureSkipVerify: true
   services:
     consul-dashboard:
       loadBalancer:
