@@ -38,6 +38,8 @@ services:
       KOMODO_INIT_ADMIN_USERNAME: admin
       KOMODO_INIT_ADMIN_PASSWORD: ${KOMODO_INIT_ADMIN_PASSWORD}
       KOMODO_DISABLE_USER_REGISTRATION: "true"
+      # Stacks only see a pushed file change after this poll, so it matches the 5-minute sync schedule.
+      KOMODO_RESOURCE_POLL_INTERVAL: 5-min
     labels: *komodo-skip
     volumes:
       - ./keys:/config/keys
