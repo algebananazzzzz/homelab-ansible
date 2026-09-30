@@ -1,0 +1,57 @@
+---
+- name: List Resource Syncs
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/read/ListResourceSyncs
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body: {}
+  register: komodo_syncs
+  check_mode: false
+  no_log: true
+
+# The repo name is the only thing the platform knows about the app layer.
+- name: Describe the app layer Resource Sync
+  ansible.builtin.set_fact:
+    komodo_sync:
+      name: homelab-komodo
+      config:
+        git_provider: github.com
+        repo: algebananazzzzz/homelab-komodo
+        branch: main
+        resource_path:
+          - komodo
+        managed: false
+        delete: false
+    komodo_sync_existing: "{{ komodo_syncs.json | selectattr('name', 'equalto', 'homelab-komodo') | list }}"
+
+- name: Create the app layer Resource Sync
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/write/CreateResourceSync
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body: "{{ komodo_sync }}"
+  when: komodo_sync_existing | length == 0
+  changed_when: true
+  no_log: true
+
+- name: Correct the app layer Resource Sync
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/write/UpdateResourceSync
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body:
+      id: "{{ komodo_sync_existing[0].id }}"
+      config: "{{ komodo_sync.config }}"
+  when:
+    - komodo_sync_existing | length > 0
+    - komodo_sync_existing[0].info.repo != komodo_sync.config.repo
+      or komodo_sync_existing[0].info.branch != komodo_sync.config.branch
+      or komodo_sync_existing[0].info.resource_path != komodo_sync.config.resource_path
+  changed_when: true
+  no_log: true

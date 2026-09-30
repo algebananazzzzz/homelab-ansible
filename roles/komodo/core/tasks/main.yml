@@ -48,3 +48,6 @@
 
 - name: Ensure the Periphery onboarding key
   ansible.builtin.import_tasks: onboarding.yml
+
+- name: Ensure the app layer Resource Sync
+  ansible.builtin.import_tasks: sync.yml
