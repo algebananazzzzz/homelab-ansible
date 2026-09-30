@@ -14,7 +14,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
    homelab-komodo/
    ├── stacks/
    │   ├── secrets/openbao/        # compose.yml, server config
-   │   ├── database/{postgres,redis,mongo}/
+   │   ├── database/{postgres,redis}/
    │   ├── identity/authelia/
    │   └── apps/{kaneo,outline,glance,beaverhabits}/
    ├── openbao/                    # agent.hcl, OpenBao's public certificate, the apps policy and provisioning script
@@ -24,6 +24,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
    ```
 
    - Each `stacks/<concern>/<name>/` holds `compose.yml` and its config files, and is that Stack's run directory. The directory name, the Stack name and the Compose project name are the same. Placement is the `server` field in the Stack's TOML, not the folder, so moving a stack between VMs changes one line.
+   - A stack that other stacks or Traefik reach also holds a `consul/` directory with one Consul service definition (JSON) per service, registered by the stack itself (decision 5).
    - Stacks reach shared files by relative path (for example `../../../openbao/agent.hcl`), which works because Komodo clones the whole repo for each Stack.
    - One Resource Sync reads the whole `komodo/` directory. Each Stack is tagged with its concern, so the sync can later be split per concern with Match Tags. Managed mode stays off (git is the only source of truth, edits are not written back from the UI) and `delete` stays off, so removing a Stack from TOML never destroys it: that is a deliberate step in the UI.
    - `procedures.toml` holds the Cold start Procedure (decision 16) and a scheduled "Sync" Procedure that runs the Resource Sync every 5 minutes. Komodo stays unreachable from GitHub, so a push deploys within 5 minutes without exposing a webhook.
@@ -32,11 +33,11 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 
    The test for the split: no file in this repo names an app, except the `authelia@file` middleware, which the platform contract names as its identity hook (decision 10).
 
-2. **Platform scope.** hv-01 and the VMs, Docker, Pi-hole, Tailscale, the Consul server and agents, the registrator, the internal CA, Traefik, cloudflared, observability (Prometheus, cAdvisor, Node Exporter), and Komodo Core and Periphery. Platform services that register in Consul (Prometheus, Komodo Core) keep using `core/consul` `tasks_from: register`. Ansible reaches hv-01 over hv-01's own Tailscale address. `vms.yml` provisions VMs through hv-01, because on a fresh build mgmt-01, which carries the Tailscale subnet routes, is itself one of the VMs being prepared. Every other playbook connects to the VMs' `10.10.x.x` addresses directly over mgmt-01's subnet routes, and Komodo deploys apps through Core on mgmt-01.
+2. **Platform scope.** hv-01 and the VMs, Docker, Pi-hole, Tailscale, the Consul server and agents, the internal CA, Traefik, cloudflared, observability (Prometheus, cAdvisor, Node Exporter), and Komodo Core and Periphery. Platform services that register in Consul (Prometheus, Komodo Core) keep using `core/consul` `tasks_from: register`. Ansible reaches hv-01 over hv-01's own Tailscale address. `vms.yml` provisions VMs through hv-01, because on a fresh build mgmt-01, which carries the Tailscale subnet routes, is itself one of the VMs being prepared. Every other playbook connects to the VMs' `10.10.x.x` addresses directly over mgmt-01's subnet routes, and Komodo deploys apps through Core on mgmt-01.
 
 3. **The platform contract.** Stacks may rely on exactly this:
    - Docker and a Komodo Periphery on mgmt-01, svc-apps-01 and svc-db-01.
-   - `SERVICE_*` container labels register a container in Consul through the registrator, and Traefik routes it from its Consul tags.
+   - A Consul agent on every VM with its HTTP API on `127.0.0.1:8500` on the host network. A stack registers its services there, and Traefik routes a service from its Consul tags.
    - Every VM resolves DNS through Pi-hole at `10.10.10.10`, configured at the VM level by Ansible, so Consul DNS (`*.service.consul`) and internal names resolve from every VM and every container without per-container `dns:` settings.
    - The internal CA certificate at `/usr/local/share/ca-certificates/homelab-ca.crt`.
    - The `authelia@file` Traefik middleware, which forwards to `authelia.service.consul:9091`.
@@ -44,7 +45,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 
 4. **Service discovery is Consul, for everything.** Service-to-service traffic uses `*.service.consul` names, OpenBao included. Traefik is for human-facing HTTP ingress only. The one exception is the OIDC URLs in Kaneo and Outline, which stay on `https://${AUTH_HOSTNAME}` because the issuer an app validates must match the one the browser sees.
 
-5. **Registration by container labels.** Ansible runs [serviceregistrator](https://github.com/metabrainz/serviceregistrator) (actively maintained, 0.8.1 released 2026-09-03) beside each Consul agent, on the host network, started with `--ip` set to the VM's address. It registers containers from `SERVICE_<port>_NAME`, `SERVICE_<port>_TAGS` and `SERVICE_<port>_CHECK_*` labels and deregisters them when they stop. It supports HTTPS checks with `SERVICE_<port>_CHECK_TLS_SKIP_VERIFY`. It cannot send a Consul ACL token, which matters only if ACLs are enabled later (see Deferred hardening). Traefik's Consul catalog provider is unchanged. A Komodo post-deploy hook was rejected because it cannot deregister destroyed stacks.
+5. **Registration by a one-shot `register` service.** Changed on 2026-09-30: serviceregistrator drops any tag outside `[\w-]`, so it cannot carry Traefik's tags, and it was removed. Each stack that others reach keeps its Consul service definitions as JSON in `consul/`, and a one-shot `register` service (`curlimages/curl`, host network) PUTs each one to the local agent's `/v1/agent/service/register` on every deploy. The stack's main services depend on it with `service_completed_successfully`, so a failed registration fails the deploy. The agent persists API registrations in its data volume, so they survive agent restarts and reboots without running again. Checks are the ones the Ansible `.hcl` files used: HTTP on `127.0.0.1:<port><path>`, or TCP. Nothing deregisters automatically: a destroyed stack's check turns critical, which drops it from Traefik and Consul DNS at once, and removing a stack for good includes one `curl -X PUT http://127.0.0.1:8500/v1/agent/service/deregister/<id>` on its host. Traefik's Consul catalog provider is unchanged.
 
 6. **Public ingress by wildcard.** One `*.algebananazzzzz.com` CNAME to the tunnel and one wildcard cloudflared ingress rule to Traefik, with `matchSNItoHost: true` in place of per-host `originServerName`. `public_hostnames` and the per-host DNS tasks in `roles/tunnel/cloudflared/tasks/dns.yml` go away. The tunnel is the only path from the internet (the home router exposes nothing), so a stack is public exactly when one of its Traefik routers matches a hostname under `algebananazzzzz.com`. There is no dedicated `public` entrypoint. A public router must carry authentication: the `authelia@file` middleware or the app's own OIDC login.
 
@@ -60,7 +61,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 
    After `site.yml`, Komodo is running, every Periphery is connected, and (from phase 2) the Resource Sync exists. Stacks, Procedures and schedules all come from the sync.
 
-9. **Databases are app-layer stacks.** Postgres, Redis and Mongo move to Komodo with their existing volume names (`homelab-postgres-data`, `homelab-redis-data`, `homelab-mongo-data`), so data carries over. Each consuming stack creates its own database and a per-app role with a one-shot `db-init` service (`depends_on: condition: service_completed_successfully`). Apps stop connecting as `admin`.
+9. **Databases are app-layer stacks.** Postgres and Redis move to Komodo with their existing volume names (`homelab-postgres-data`, `homelab-redis-data`), so data carries over. Postgres creates the app databases from `initdb/` only when its volume is empty. Apps keep connecting as `admin` for now (changed on 2026-09-30 to keep phase 3 simple); a role per app is in Deferred hardening.
 
 10. **Authelia is an app-layer stack.** Its OIDC client list lives in the app repo. `authelia@file` in `roles/proxy/traefik/files/dynamic.yml` stays on the platform, because it references a Consul name, not a deployment.
 
@@ -73,28 +74,28 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
     - Manual Shamir unseal with one key share. The unseal key and the initial root token go in the user's password manager, and the root token is revoked after setup.
     - `deploy = false` in the sync, so a sync never restarts (and seals) it.
     - It serves TLS itself with a self-signed certificate for `openbao.service.consul`. The private key stays in its volume, and the public certificate is committed to the app repo.
-    - It registers through the registrator with an HTTPS check on `/v1/sys/health` (`SERVICE_8200_CHECK_TLS_SKIP_VERIFY=true`), which fails while sealed, so a sealed OpenBao shows as critical in Consul and drops out of Consul DNS.
+    - It registers itself (decision 5) with an HTTPS check on `/v1/sys/health` that skips certificate verification. The check fails while sealed, so a sealed OpenBao shows as critical in Consul and drops out of Consul DNS.
     - No Traefik route is needed for agents. A route at `openbao.ops.home.arpa` for the web UI is optional.
 
 14. **Secret delivery by a one-shot agent.** Each stack with secrets has a `secrets` service running the OpenBao agent with `exit_after_auth = true`. It logs in, renders its templates into a named volume, and exits (verified in [`template.go`](https://github.com/openbao/openbao/blob/main/internal/command/agent/template/template.go#L278-L284)). The app starts after it with `depends_on: condition: service_completed_successfully`.
     - One shared `agent.hcl` in the app repo dumps every key under `kv/apps/<app>` into `/secrets/app.env`, with the app name passed as an `APP` environment variable.
-    - Apps with `*_FILE` support read files. Other apps get an entrypoint wrapper that sources `/secrets/app.env` and execs the image's original command, taken from `docker inspect`.
+    - Each app's entrypoint wrapper sources `/secrets/app.env`, checks every variable the app needs with `: "${VAR:?}"`, and execs the image's original entrypoint and command, taken from `docker inspect`. A key missing from OpenBao therefore stops the app instead of starting it without the value.
     - Values currently built by Compose interpolation, such as Kaneo's `DATABASE_URL`, are stored whole in OpenBao.
-    - Authelia gets its own templates, because it needs whole files rendered (`users_database.yml`, the JWKS key).
+    - Authelia gets its own agent config and templates, which render `configuration.yml` (with its secrets inline) and `users_database.yml` into its config volume, so Authelia needs no wrapper.
     - Stacks without secrets (Glance, beaverhabits) have no agent.
     - Rendered secrets persist in the volume, so after a reboot Docker restarts the apps without OpenBao. A sealed OpenBao blocks deploys, not running apps.
 
 15. **One shared AppRole for all apps.** Changed on 2026-09-30 to keep phase 2 simple: a single `apps` policy reads `kv/apps/*`, and a single `apps` AppRole, whose secret_id does not expire, carries it. Any stack's agent can therefore read every app's secrets; splitting it per app is in Deferred hardening. The role_id and secret_id are stored once as Komodo secret Variables and reach each agent as Compose secrets (`secrets: {vault_secret_id: {environment: VAULT_SECRET_ID}}`). An idempotent `bao` CLI script in the app repo creates the KV mount, the policy and the AppRole (open question 1).
 
-16. **Deploy order.** Stacks do not use `after` in the sync, because it cascades: a sync deploy of a dependency redeploys everything listing it. Sync deploys stay independent. A manual "Cold start" Procedure deploys, in stages: Postgres, Redis and Mongo; then Authelia; then Kaneo and Outline. Glance and beaverhabits have no dependencies. From nothing, the full order is: Ansible `site.yml`, which ends with Komodo running and its Resource Sync created; run the sync once, which creates the Stacks and Procedures; deploy and unseal OpenBao; then run Cold start.
+16. **Deploy order.** Stacks do not use `after` in the sync, because it cascades: a sync deploy of a dependency redeploys everything listing it. Sync deploys stay independent. A manual "Cold start" Procedure deploys, in stages: Postgres and Redis; then Authelia; then Kaneo and Outline. Glance and beaverhabits have no dependencies. From nothing, the full order is: Ansible `site.yml`, which ends with Komodo running and its Resource Sync created; run the sync once, which creates the Stacks and Procedures; deploy and unseal OpenBao; then run Cold start.
 
 ## Migration
 
 1. Existing secret values are copied into OpenBao, never regenerated: `/opt/compose/secrets/*` and `/opt/compose/authelia/oidc/*` on svc-apps-01, and the values in `.env`. The one exception is the Authelia OIDC signing key, which is regenerated because `make check` printed it (see Known limits).
 2. Stacks keep their Compose project names and explicit volume names, so Compose adopts the existing named volumes.
 3. beaverhabits bind-mounts `./data`, which resolves to `/opt/compose/beaverhabits/data`. Komodo runs stacks from its own directory, so this moves to a named volume with the data copied over before cutover.
-4. During migration, a stack's old `.hcl` registration and its registrator registration both exist with different IDs, so Traefik briefly sees two healthy backends. Each `.hcl` is deleted when its stack moves.
-5. Stacks move in this order: beaverhabits and Glance (no secrets), then Postgres, Redis and Mongo, then Kaneo and Outline, then Authelia (most involved).
+4. Each stack's Ansible `.hcl` definition is deleted and Consul reloaded just before the stack deploys, because the stack registers the same service ID. The route is down for that minute.
+5. Stacks move in this order: beaverhabits and Glance (no secrets), then Postgres and Redis, then Kaneo and Outline, then Authelia (most involved). Mongo is not moved: it holds only its system databases. It is stopped with `homelab-mongo-data` kept.
 
 ## Phases
 
@@ -102,19 +103,20 @@ Each phase gets its own implementation plan.
 
 1. **Platform preparation (this repo):** platform secrets in SOPS, `site.yml` no longer deploying databases or apps, every VM resolving through Pi-hole, the registrator, the wildcard tunnel, the mgmt-01 resize, and `playbooks/komodo.yml` with the `komodo/core` and `komodo/periphery` roles.
 2. **App repo and OpenBao:** create the app repo and its Resource Sync, deploy and initialise OpenBao, write the shared agent config and the provisioning script.
-3. **Stack migration** in the order above.
-4. **Cleanup (this repo):** delete `compose/`, `roles/applications/`, `roles/databases/`, `playbooks/applications.yml`, `playbooks/databases.yml`, both `host_vars/*/applications.yml`, `group_vars/authelia.yml`, `group_vars/postgres.yml`, the `authelia`, `applications`, `postgres`, `redis` and `mongo` inventory groups, and `public_hostnames`.
+3. **Stack migration** in the order above, run in one plan with phase 4 (changed on 2026-09-30).
+4. **Cleanup (this repo and the hosts):** delete `compose/`, `roles/applications/`, `roles/databases/`, `playbooks/applications.yml`, `playbooks/databases.yml`, both `host_vars/*/applications.yml`, `group_vars/authelia.yml`, `group_vars/postgres.yml`, the `authelia`, `applications`, `postgres`, `redis` and `mongo` inventory groups, `public_hostnames`, and the registrator role; on the hosts, the old `/opt/compose/<app>` directories and the app secrets in `/opt/compose/secrets`.
 
 ## Deferred hardening
 
 The user prioritised getting the split deployed and performing well over security, and chose to expose everything on the home network and tailnet for now. These were designed and set aside, to be picked up later:
 
-1. **Consul lockdown.** Bind every agent's HTTP API, and the server's, to `127.0.0.1` (Traefik uses its local agent, and Pi-hole forwards `.consul` DNS to the server on port 8600, so nothing needs the API remotely). Enable ACLs with a default-deny policy, gossip encryption, and tokens in the platform SOPS file. serviceregistrator cannot send a token, so each agent's default token would grant service write, reachable only from the host network. Today any container can register or remove Traefik routes through port 8500, and `consul.ops.home.arpa` exposes the server's full HTTP API without authentication.
+1. **Consul lockdown.** Bind every agent's HTTP API, and the server's, to `127.0.0.1` (Traefik uses its local agent, and Pi-hole forwards `.consul` DNS to the server on port 8600, so nothing needs the API remotely). Enable ACLs with a default-deny policy, gossip encryption, and tokens in the platform SOPS file. the `register` one-shot would then need a token with service write, delivered like app secrets. Today any container can register or remove Traefik routes through port 8500, and `consul.ops.home.arpa` exposes the server's full HTTP API without authentication.
 2. **Trusted networks.** A `trusted-networks@file` Traefik IP allowlist for the home LAN (`192.168.50.0/24`) and the tailnet (`100.64.0.0/10`) on every platform UI, with the Consul router injecting the management token so access from those networks needs no login. This requires `--snat-subnet-routes=false` on mgmt-01's Tailscale (it currently NATs tailnet clients to `10.10.10.10`) and a route on hv-01 for `100.64.0.0/10` via mgmt-01.
 3. **Periphery restricted to Core's IP.**
 4. **One AppRole per app.** A policy per app that reads only `kv/apps/<app>/*`, each with its own AppRole and Komodo Variables, so a compromised stack reads only its own secrets.
 5. **AppRole host binding.** `secret_id_bound_cidrs` and `token_bound_cidrs` set to each app host's IP, plus the Docker bridge range for stacks on svc-db-01, the same VM as OpenBao.
 6. **Periphery pins Core's public key** with `PERIPHERY_CORE_PUBLIC_KEYS`, instead of trusting the key presented during the handshake.
+7. **A database role per app.** Each consuming stack creates its own role with a one-shot `db-init` service and takes over its tables from `admin`, so apps stop connecting as `admin`.
 
 ## Known limits
 
@@ -129,4 +131,4 @@ The user prioritised getting the split deployed and performing well over securit
 
 1. **Provisioning OpenBao:** resolved on 2026-09-30, a `bao` CLI script in the app repo (decision 15).
 2. **Backups:** destination and schedule for OpenBao Raft snapshots, Postgres, Mongo and Komodo's database, whether any copy goes off-site, and when the first test restore happens.
-3. **Mongo has no consumer in either repo** (its healthcheck mentions Habitica). Migrate it or drop it.
+3. **Mongo:** resolved on 2026-09-30: dropped. It holds only its system databases and nothing consumes it. It is stopped with `homelab-mongo-data` kept, to be deleted by hand.
