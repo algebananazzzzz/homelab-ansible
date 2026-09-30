@@ -17,7 +17,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
    │   ├── database/{postgres,redis,mongo}/
    │   ├── identity/authelia/
    │   └── apps/{kaneo,outline,glance,beaverhabits}/
-   ├── openbao/                    # agent.hcl, OpenBao's public certificate, per-app policies and AppRoles
+   ├── openbao/                    # agent.hcl, OpenBao's public certificate, the apps policy and provisioning script
    ├── komodo/                     # Resource Sync: one TOML per concern, plus procedures.toml
    ├── renovate.json
    └── .github/workflows/validate.yml
@@ -84,7 +84,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
     - Stacks without secrets (Glance, beaverhabits) have no agent.
     - Rendered secrets persist in the volume, so after a reboot Docker restarts the apps without OpenBao. A sealed OpenBao blocks deploys, not running apps.
 
-15. **One AppRole per app.** Each app gets a policy that reads only `kv/apps/<app>/*`, and an AppRole whose secret_id does not expire. role_id and secret_id are stored as Komodo secret Variables and reach the agent as Compose secrets (`secrets: {vault_secret_id: {environment: VAULT_SECRET_ID}}`).
+15. **One shared AppRole for all apps.** Changed on 2026-09-30 to keep phase 2 simple: a single `apps` policy reads `kv/apps/*`, and a single `apps` AppRole, whose secret_id does not expire, carries it. Any stack's agent can therefore read every app's secrets; splitting it per app is in Deferred hardening. The role_id and secret_id are stored once as Komodo secret Variables and reach each agent as Compose secrets (`secrets: {vault_secret_id: {environment: VAULT_SECRET_ID}}`). An idempotent `bao` CLI script in the app repo creates the KV mount, the policy and the AppRole (open question 1).
 
 16. **Deploy order.** Stacks do not use `after` in the sync, because it cascades: a sync deploy of a dependency redeploys everything listing it. Sync deploys stay independent. A manual "Cold start" Procedure deploys, in stages: Postgres, Redis and Mongo; then Authelia; then Kaneo and Outline. Glance and beaverhabits have no dependencies. From nothing, the full order is: Ansible `site.yml`, which ends with Komodo running and its Resource Sync created; run the sync once, which creates the Stacks and Procedures; deploy and unseal OpenBao; then run Cold start.
 
@@ -101,7 +101,7 @@ This repo deploys both the platform (VMs, networking, discovery, ingress) and th
 Each phase gets its own implementation plan.
 
 1. **Platform preparation (this repo):** platform secrets in SOPS, `site.yml` no longer deploying databases or apps, every VM resolving through Pi-hole, the registrator, the wildcard tunnel, the mgmt-01 resize, and `playbooks/komodo.yml` with the `komodo/core` and `komodo/periphery` roles.
-2. **App repo and OpenBao:** create the app repo and its Resource Sync, deploy and initialise OpenBao, write the shared agent config and the per-app provisioning.
+2. **App repo and OpenBao:** create the app repo and its Resource Sync, deploy and initialise OpenBao, write the shared agent config and the provisioning script.
 3. **Stack migration** in the order above.
 4. **Cleanup (this repo):** delete `compose/`, `roles/applications/`, `roles/databases/`, `playbooks/applications.yml`, `playbooks/databases.yml`, both `host_vars/*/applications.yml`, `group_vars/authelia.yml`, `group_vars/postgres.yml`, the `authelia`, `applications`, `postgres`, `redis` and `mongo` inventory groups, and `public_hostnames`.
 
@@ -112,8 +112,9 @@ The user prioritised getting the split deployed and performing well over securit
 1. **Consul lockdown.** Bind every agent's HTTP API, and the server's, to `127.0.0.1` (Traefik uses its local agent, and Pi-hole forwards `.consul` DNS to the server on port 8600, so nothing needs the API remotely). Enable ACLs with a default-deny policy, gossip encryption, and tokens in the platform SOPS file. serviceregistrator cannot send a token, so each agent's default token would grant service write, reachable only from the host network. Today any container can register or remove Traefik routes through port 8500, and `consul.ops.home.arpa` exposes the server's full HTTP API without authentication.
 2. **Trusted networks.** A `trusted-networks@file` Traefik IP allowlist for the home LAN (`192.168.50.0/24`) and the tailnet (`100.64.0.0/10`) on every platform UI, with the Consul router injecting the management token so access from those networks needs no login. This requires `--snat-subnet-routes=false` on mgmt-01's Tailscale (it currently NATs tailnet clients to `10.10.10.10`) and a route on hv-01 for `100.64.0.0/10` via mgmt-01.
 3. **Periphery restricted to Core's IP.**
-4. **AppRole host binding.** `secret_id_bound_cidrs` and `token_bound_cidrs` set to each app host's IP, plus the Docker bridge range for stacks on svc-db-01, the same VM as OpenBao.
-5. **Periphery pins Core's public key** with `PERIPHERY_CORE_PUBLIC_KEYS`, instead of trusting the key presented during the handshake.
+4. **One AppRole per app.** A policy per app that reads only `kv/apps/<app>/*`, each with its own AppRole and Komodo Variables, so a compromised stack reads only its own secrets.
+5. **AppRole host binding.** `secret_id_bound_cidrs` and `token_bound_cidrs` set to each app host's IP, plus the Docker bridge range for stacks on svc-db-01, the same VM as OpenBao.
+6. **Periphery pins Core's public key** with `PERIPHERY_CORE_PUBLIC_KEYS`, instead of trusting the key presented during the handshake.
 
 ## Known limits
 
@@ -126,6 +127,6 @@ The user prioritised getting the split deployed and performing well over securit
 
 ## Open questions
 
-1. **Provisioning OpenBao** (KV paths, policies, AppRoles): the OpenTofu Vault provider, or a `bao` CLI script in the app repo.
+1. **Provisioning OpenBao:** resolved on 2026-09-30, a `bao` CLI script in the app repo (decision 15).
 2. **Backups:** destination and schedule for OpenBao Raft snapshots, Postgres, Mongo and Komodo's database, whether any copy goes off-site, and when the first test restore happens.
 3. **Mongo has no consumer in either repo** (its healthcheck mentions Habitica). Migrate it or drop it.
