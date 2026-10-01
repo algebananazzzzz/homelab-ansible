@@ -1,0 +1,7 @@
+---
+# Only the first install uses this; afterwards Hermes updates itself with `hermes update` or Desktop's Update button.
+hermes_version: v2026.9.24
+hermes_user: hermes
+hermes_home_dir: /home/hermes
+hermes_hostname: "hermes.{{ base_domain }}"
+hermes_dashboard_port: 9119

@@ -1,0 +1,143 @@
+---
+- name: Create the Hermes user
+  ansible.builtin.user:
+    name: "{{ hermes_user }}"
+    home: "{{ hermes_home_dir }}"
+    shell: /bin/bash
+  register: hermes_account
+
+# The gateway is a systemd user service, and its cron workers need the user manager running without a login.
+- name: Keep the Hermes user's systemd manager running
+  ansible.builtin.command:
+    argv: [loginctl, enable-linger, "{{ hermes_user }}"]
+    creates: "/var/lib/systemd/linger/{{ hermes_user }}"
+
+# The installer compiles native Node modules such as node-pty, and runs without sudo to install a compiler itself.
+- name: Install build tools for Hermes
+  ansible.builtin.apt:
+    name: build-essential
+    state: present
+    update_cache: true
+    cache_valid_time: 86400
+
+- name: Download the Hermes installer
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/NousResearch/hermes-agent/{{ hermes_version }}/scripts/install.sh"
+    dest: "{{ hermes_home_dir }}/install.sh"
+    owner: "{{ hermes_user }}"
+    group: "{{ hermes_user }}"
+    mode: "0755"
+
+# Forage does the web fetching, so Hermes's own browser and computer-use tools are left out.
+# Debian's Python links SQLite 3.40, whose FTS5 fails Hermes's session-index writes, so uv supplies its own Python.
+- name: Install Hermes
+  ansible.builtin.command:
+    argv:
+      - "{{ hermes_home_dir }}/install.sh"
+      - --branch
+      - "{{ hermes_version }}"
+      - --non-interactive
+      - --skip-browser
+      - --skip-computer-use
+    creates: "{{ hermes_home_dir }}/.local/bin/hermes"
+  become_user: "{{ hermes_user }}"
+  environment:
+    UV_PYTHON_PREFERENCE: only-managed
+
+- name: Create the managed config directory
+  ansible.builtin.file:
+    path: /etc/hermes
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write the managed config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/hermes/config.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  register: hermes_managed_config
+
+- name: Write the managed environment
+  ansible.builtin.template:
+    src: env.j2
+    dest: /etc/hermes/.env
+    owner: root
+    group: root
+    mode: "0644"
+  register: hermes_managed_env
+
+- name: Create the Forage plugin directory
+  ansible.builtin.file:
+    path: "{{ hermes_home_dir }}/.hermes/plugins/web/forage"
+    state: directory
+    owner: "{{ hermes_user }}"
+    group: "{{ hermes_user }}"
+    mode: "0755"
+
+# Copied from the Forage release that the Komodo forage stack runs, so the two change together.
+- name: Install the Forage plugin
+  ansible.builtin.copy:
+    src: "forage/{{ item }}"
+    dest: "{{ hermes_home_dir }}/.hermes/plugins/web/forage/{{ item }}"
+    owner: "{{ hermes_user }}"
+    group: "{{ hermes_user }}"
+    mode: "0644"
+  loop: [__init__.py, plugin.yaml, provider.py]
+  register: hermes_forage_plugin
+
+- name: Enable the Forage plugin
+  ansible.builtin.command:
+    argv: ["{{ hermes_home_dir }}/.local/bin/hermes", plugins, enable, web/forage]
+  become_user: "{{ hermes_user }}"
+  register: hermes_forage_enable
+  changed_when: "'already enabled' not in hermes_forage_enable.stdout"
+
+- name: Install the gateway as a user service
+  ansible.builtin.command:
+    argv: ["{{ hermes_home_dir }}/.local/bin/hermes", gateway, install]
+    creates: "{{ hermes_home_dir }}/.config/systemd/user/hermes-gateway.service"
+  become_user: "{{ hermes_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ hermes_account.uid }}"
+
+- name: Restart the gateway for changed config
+  ansible.builtin.systemd_service:
+    name: hermes-gateway.service
+    scope: user
+    state: restarted
+  become_user: "{{ hermes_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ hermes_account.uid }}"
+  when: hermes_managed_config.changed or hermes_managed_env.changed or hermes_forage_plugin.changed
+
+- name: Write the dashboard service
+  ansible.builtin.template:
+    src: hermes-dashboard.service.j2
+    dest: /etc/systemd/system/hermes-dashboard.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: hermes_dashboard_unit
+
+- name: Start the dashboard
+  ansible.builtin.systemd_service:
+    name: hermes-dashboard.service
+    enabled: true
+    daemon_reload: "{{ hermes_dashboard_unit.changed }}"
+    state: "{{ 'restarted' if hermes_dashboard_unit.changed or hermes_managed_config.changed or hermes_managed_env.changed else 'started' }}"
+
+- name: Register the dashboard with Consul
+  ansible.builtin.include_role:
+    name: core/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: hermes
+      port: "{{ hermes_dashboard_port }}"
+      hostnames:
+        - "{{ hermes_hostname }}"
+      health_path: /api/status

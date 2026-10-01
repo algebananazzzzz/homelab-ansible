@@ -1,0 +1,18 @@
+[Unit]
+Description=Hermes dashboard, the backend Hermes Desktop connects to
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ hermes_user }}
+Group={{ hermes_user }}
+Environment=HOME={{ hermes_home_dir }}
+WorkingDirectory={{ hermes_home_dir }}
+ExecStart={{ hermes_home_dir }}/.local/bin/hermes dashboard --host 0.0.0.0 --port {{ hermes_dashboard_port }} --no-open
+Restart=always
+RestartSec=10
+# Exit 78 means another dashboard already serves this host, so restarting would only loop.
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=multi-user.target
