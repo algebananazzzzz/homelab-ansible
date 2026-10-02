@@ -6,4 +6,3 @@
 - import_playbook: proxy.yml
 - import_playbook: tunnel.yml
 - import_playbook: komodo.yml
-- import_playbook: agent.yml
