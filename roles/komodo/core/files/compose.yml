@@ -45,13 +45,11 @@ services:
       KOMODO_OIDC_PROVIDER: https://auth.algebananazzzzz.com
       KOMODO_OIDC_CLIENT_ID: komodo
       KOMODO_OIDC_CLIENT_SECRET: ${KOMODO_OIDC_CLIENT_SECRET}
-      # Stacks only see a pushed file change after this poll, so it matches the 5-minute sync schedule.
       KOMODO_RESOURCE_POLL_INTERVAL: 5-min
     labels: *komodo-skip
     volumes:
       - ./keys:/config/keys
       - ./backups:/backups
-      # Authelia's hostname resolves to Traefik, whose certificate only the host's bundle (with the homelab CA) trusts.
       - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
     restart: unless-stopped
 
