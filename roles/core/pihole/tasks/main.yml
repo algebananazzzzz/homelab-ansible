@@ -7,9 +7,26 @@
     group: root
     mode: "0750"
 
-- name: Write Pi-hole Compose file
+- name: Create Pi-hole dnsmasq directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/pihole/dnsmasq"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write Pi-hole DNS rules
   ansible.builtin.template:
-    src: compose.yml.j2
+    src: dnsmasq.conf.j2
+    dest: "{{ compose_root }}/pihole/dnsmasq/dnsmasq.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: pihole_dns_rules
+
+- name: Write Pi-hole Compose file
+  ansible.builtin.copy:
+    src: compose.yml
     dest: "{{ compose_root }}/pihole/compose.yml"
     owner: root
     group: root
@@ -20,3 +37,5 @@
     project_src: "{{ compose_root }}/pihole"
     remove_orphans: true
     wait: true
+    # dnsmasq reads its configuration only at startup.
+    recreate: "{{ 'always' if pihole_dns_rules.changed else 'auto' }}"

@@ -1,0 +1,19 @@
+name: pihole
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.07.2
+    ports:
+      - "10.10.10.10:53:53/tcp"
+      - "10.10.10.10:53:53/udp"
+      - "8080:80/tcp"
+    environment:
+      TZ: Asia/Singapore
+      FTLCONF_dns_listeningMode: ALL
+      # Pi-hole v6 ignores /etc/dnsmasq.d unless told otherwise.
+      FTLCONF_misc_etc_dnsmasq_d: "true"
+    volumes:
+      - ./data:/etc/pihole
+      - ./dnsmasq:/etc/dnsmasq.d:ro
+    restart: unless-stopped

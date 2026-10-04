@@ -1,0 +1,12 @@
+# Every home.arpa and algebananazzzzz.com name goes to Traefik on svc-proxy-01, which picks the app by hostname.
+address=/home.arpa/10.10.20.10
+address=/algebananazzzzz.com/10.10.20.10
+
+# Machines answer for their own names, which beat the wildcard because they are more specific.
+address=/hv-01.home.arpa/10.10.10.1
+{% for host in groups['vm'] %}
+address=/{{ host }}.home.arpa/{{ hostvars[host].vm_definition.address }}
+{% endfor %}
+
+# The Consul server on svc-proxy-01 answers for .consul.
+server=/consul/10.10.20.10#8600
