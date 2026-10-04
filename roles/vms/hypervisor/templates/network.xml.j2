@@ -1,7 +1,10 @@
-<network>
+<network xmlns:dnsmasq="http://libvirt.org/schemas/network/dnsmasq/1.0">
   <name>{{ item.name }}</name>
   <forward mode="open"/>
   <bridge name="{{ item.name }}" stp="on" delay="0"/>
+{% if item.domain is defined %}
+  <domain name="{{ item.domain }}" localOnly="yes"/>
+{% endif %}
   <dns>
     <forwarder addr="{{ lan_ip }}"/>
   </dns>
@@ -15,4 +18,10 @@
 {% endfor %}
     </dhcp>
   </ip>
+{% if item.domain is defined %}
+  <!-- Accepts the queries Pi-hole forwards from br-mgmt. -->
+  <dnsmasq:options>
+    <dnsmasq:option value="listen-address={{ item.gateway }}"/>
+  </dnsmasq:options>
+{% endif %}
 </network>
