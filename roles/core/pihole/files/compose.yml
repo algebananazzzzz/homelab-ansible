@@ -11,7 +11,6 @@ services:
     environment:
       TZ: Asia/Singapore
       FTLCONF_dns_listeningMode: ALL
-      # Pi-hole v6 ignores /etc/dnsmasq.d unless told otherwise.
       FTLCONF_misc_etc_dnsmasq_d: "true"
     volumes:
       - ./data:/etc/pihole

@@ -31,7 +31,6 @@ http:
       rule: Host(`pihole.ops.home.arpa`)
       service: pihole-dashboard
       tls: {}
-    # The media apps and the NAS admin run on the hypervisor itself, addressed by its br-mgmt gateway.
     jellyfin:
       entryPoints:
         - web
