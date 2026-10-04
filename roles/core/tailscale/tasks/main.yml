@@ -94,10 +94,12 @@
   changed_when: false
   check_mode: false
 
-- name: Advertise homelab routes
+# Tailscale records an advertised exit node as the two default routes.
+- name: Advertise homelab routes and the exit node
   ansible.builtin.command:
     argv:
       - tailscale
       - set
       - "--advertise-routes={{ tailscale_advertised_routes | join(',') }}"
-  when: (tailscale_preferences.stdout | from_json).AdvertiseRoutes | sort != tailscale_advertised_routes | sort
+      - --advertise-exit-node
+  when: (tailscale_preferences.stdout | from_json).AdvertiseRoutes | sort != (tailscale_advertised_routes + ['0.0.0.0/0', '::/0']) | sort
