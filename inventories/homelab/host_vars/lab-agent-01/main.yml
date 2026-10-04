@@ -1,0 +1,9 @@
+---
+vm_definition:
+  name: lab-agent-01
+  network: br-lab
+  mac: '52:54:00:30:00:10'
+  address: 10.10.30.10
+  memory_mb: 3072
+  vcpus: 2
+  disk_gb: 20
