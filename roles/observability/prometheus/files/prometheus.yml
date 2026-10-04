@@ -15,8 +15,6 @@ scrape_configs:
         labels: {instance_name: svc-db-01}
       - targets: [10.10.20.113:9100]
         labels: {instance_name: svc-apps-01}
-      - targets: [10.10.20.114:9100]
-        labels: {instance_name: svc-apps-02}
       - targets: [10.10.30.10:9100]
         labels: {instance_name: lab-01}
 
@@ -32,5 +30,3 @@ scrape_configs:
         labels: {instance_name: svc-db-01}
       - targets: [10.10.20.113:8081]
         labels: {instance_name: svc-apps-01}
-      - targets: [10.10.20.114:8081]
-        labels: {instance_name: svc-apps-02}

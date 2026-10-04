@@ -1,9 +1,0 @@
----
-vm_definition:
-  name: svc-apps-02
-  network: br-svc
-  mac: '52:54:00:20:00:14'
-  address: 10.10.20.114
-  memory_mb: 4096
-  vcpus: 2
-  disk_gb: 20
