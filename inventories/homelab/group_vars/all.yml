@@ -9,6 +9,7 @@ tls_certificate_domains:
   - auth.home.arpa
   - "*.svc.home.arpa"
   - "*.ops.home.arpa"
+  - "*.media.home.arpa"
   - "*.{{ base_domain }}"
 
 cloudflare:

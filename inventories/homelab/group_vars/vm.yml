@@ -4,6 +4,7 @@ compose_root: /opt/compose
 vm_dns_server: "{{ hostvars[groups['pihole'] | first].ansible_host }}"
 
 # mgmt-01's Tailscale subnet routes need a manual login and approval on a fresh build, so a rebuild runs site.yml with -e vm_via_hypervisor=true until they exist.
+# The flag also sends hv-01 over the home LAN, since its usual address is only reachable through those routes.
 ansible_ssh_common_args: "{{ vm_hypervisor_proxy_args if vm_via_hypervisor | default(false) | bool else '' }}"
 vm_hypervisor_proxy_args: >-
   -o ProxyCommand="ssh -p {{ hostvars[hypervisor_host].ansible_port }} {{ admin_user }}@{{ hostvars[hypervisor_host].ansible_host }} nc %h %p"

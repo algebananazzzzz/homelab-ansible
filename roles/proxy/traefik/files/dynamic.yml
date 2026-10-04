@@ -31,6 +31,63 @@ http:
       rule: Host(`pihole.ops.home.arpa`)
       service: pihole-dashboard
       tls: {}
+    # The media apps and the NAS admin run on the hypervisor itself, addressed by its br-mgmt gateway.
+    jellyfin:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`jellyfin.media.home.arpa`)
+      service: jellyfin
+      tls: {}
+    jellyseerr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`jellyseerr.media.home.arpa`)
+      service: jellyseerr
+      tls: {}
+    radarr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`radarr.media.home.arpa`)
+      service: radarr
+      tls: {}
+    sonarr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`sonarr.media.home.arpa`)
+      service: sonarr
+      tls: {}
+    lidarr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`lidarr.media.home.arpa`)
+      service: lidarr
+      tls: {}
+    bazarr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`bazarr.media.home.arpa`)
+      service: bazarr
+      tls: {}
+    prowlarr:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`prowlarr.media.home.arpa`)
+      service: prowlarr
+      tls: {}
+    ugos:
+      entryPoints:
+        - web
+        - websecure
+      rule: Host(`ugos.ops.home.arpa`)
+      service: ugos
+      tls: {}
   # For stacks that serve their own self-signed TLS: traffic stays encrypted, but the backend certificate is not verified.
   serversTransports:
     self-signed:
@@ -44,6 +101,39 @@ http:
       loadBalancer:
         servers:
           - url: http://10.10.10.10:8080
+    jellyfin:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:8096
+    jellyseerr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:5055
+    radarr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:7878
+    sonarr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:8989
+    lidarr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:8686
+    bazarr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:6767
+    prowlarr:
+      loadBalancer:
+        servers:
+          - url: http://10.10.10.1:9696
+    ugos:
+      loadBalancer:
+        serversTransport: self-signed
+        servers:
+          - url: https://10.10.10.1:9443
 
 tls:
   certificates:

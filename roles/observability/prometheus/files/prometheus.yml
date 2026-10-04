@@ -5,7 +5,7 @@ global:
 scrape_configs:
   - job_name: node
     static_configs:
-      - targets: [192.168.50.39:9100]
+      - targets: [10.10.10.1:9100]
         labels: {instance_name: host}
       - targets: [10.10.10.10:9100]
         labels: {instance_name: mgmt-01}
@@ -15,12 +15,10 @@ scrape_configs:
         labels: {instance_name: svc-db-01}
       - targets: [10.10.20.113:9100]
         labels: {instance_name: svc-apps-01}
-      - targets: [10.10.30.10:9100]
-        labels: {instance_name: lab-01}
 
   - job_name: cadvisor
     static_configs:
-      - targets: [192.168.50.39:8081]
+      - targets: [10.10.10.1:8081]
         labels: {instance_name: host}
       - targets: [10.10.10.10:8081]
         labels: {instance_name: mgmt-01}

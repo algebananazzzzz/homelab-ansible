@@ -1,5 +1,6 @@
 ---
-ansible_host: 100.116.110.63
+# mgmt-01's subnet route reaches the host on its br-mgmt address; a fresh build has no mgmt-01 yet and comes in over the home LAN.
+ansible_host: "{{ lan_ip if vm_via_hypervisor | default(false) | bool else (networks | selectattr('name', 'equalto', 'br-mgmt') | first).gateway }}"
 ansible_port: 2222
 hostname: DXP4800PRO-F0EE
 storage_root: /volume1/@kvm/homelab
