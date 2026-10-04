@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: [10.10.10.1:9100]
+        labels: {instance_name: host}
+{% for host in groups['vm'] %}
+      - targets: [{{ hostvars[host].vm_definition.address }}:9100]
+        labels: {instance_name: {{ host }}}
+{% endfor %}
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [10.10.10.1:8081]
+        labels: {instance_name: host}
+{% for host in groups['vm'] %}
+      - targets: [{{ hostvars[host].vm_definition.address }}:8081]
+        labels: {instance_name: {{ host }}}
+{% endfor %}
