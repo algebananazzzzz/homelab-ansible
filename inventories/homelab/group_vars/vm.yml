@@ -1,7 +1,7 @@
 ---
 ansible_host: "{{ vm_definition.address }}"
 compose_root: /opt/compose
-vm_dns_server: "{{ hostvars[groups['pihole'] | first].ansible_host }}"
+vm_dns_server: 10.10.10.10
 
 # mgmt-01's Tailscale subnet routes need a manual login and approval on a fresh build, so a rebuild runs site.yml with -e vm_via_hypervisor=true until they exist.
 # The flag also sends hv-01 over the home LAN, since its usual address is only reachable through those routes.
