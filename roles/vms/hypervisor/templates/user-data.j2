@@ -12,9 +12,3 @@ users:
     ssh_authorized_keys:
       - {{ host_ssh_public_key }}
       - {{ controller_ssh_public_key }}
-packages:
-  - git
-  - python3
-  - qemu-guest-agent
-runcmd:
-  - [systemctl, start, qemu-guest-agent]

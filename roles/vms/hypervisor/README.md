@@ -49,7 +49,7 @@ Cloud-init runs inside the guest and applies boot configuration. Ansible prepare
 
 `cloud_init.yml` renders three files:
 
-- **`user-data`**: admin user, sudo access, authorized SSH public keys, packages, and guest-agent startup.
+- **`user-data`**: admin user, sudo access, and authorized SSH public keys. Packages come from the `vms/guest` role, because a VM may boot before Pi-hole can resolve for it.
 - **`meta-data`**: instance identity and hostname. Cloud-init uses instance identity when tracking initialization.
 - **`network-config`**: matches the NIC by MAC, names it `ens3`, and enables DHCP.
 
@@ -80,26 +80,25 @@ How the guest receives them:
 
 ## DHCP and DNS
 
-- Libvirt's **dnsmasq** provides DHCP and DNS for each network.
+- Libvirt's **dnsmasq** provides DHCP for each network. Only a network with a `domain` also serves DNS.
 - A **DHCP pool** supplies dynamic addresses. A **reservation** maps a guest MAC to a fixed address; the guest still uses DHCP.
-- Reservations for the management and service networks derive from VM definitions with an `address`. Guests without one use the network's dynamic pool.
-- DNS queries pass from the guest to its bridge gateway, then to the host LAN address. The NAT rules redirect those host-originated upstream queries to Pi-hole on `mgmt-01`.
-- Pi-hole's destination address comes from inventory rather than a second hardcoded IP in the firewall template.
+- br-mgmt and br-svc have no pool, so every VM on them needs an `address` in its VM definition, which becomes its reservation. br-lab has only a pool.
+- DHCP hands each guest its network's `dns_server`. br-svc and br-lab hand out Pi-hole on `mgmt-01`. br-mgmt hands out a public resolver, because mgmt-01 boots before Pi-hole exists on it.
+- br-lab's dnsmasq answers `lab.home.arpa` from its leases when Pi-hole forwards to it. `localOnly` makes it answer an unknown name there with NXDOMAIN rather than forward it back to Pi-hole.
 
 ## Routing and NAT
 
 - **IP forwarding** lets the host route traffic between interfaces. `routing.yml` enables `net.ipv4.ip_forward` immediately and persists it through a sysctl configuration file.
 - **NAT** rewrites packet addresses. `nat.yml` installs an nftables ruleset in the dedicated `homelab_nat` table.
 - **Masquerading** rewrites internal guests' source addresses to the host's outgoing address when traffic leaves through the uplink. Return traffic follows the tracked translation.
-- Traffic destined for the home LAN is excluded from masquerading. Replies therefore need a route back to the guest subnet.
-- **DNAT** redirects TCP and UDP DNS traffic addressed to the host LAN IP to the management VM. This rule uses the `output` chain because dnsmasq sends those queries from the host itself.
+- Traffic to the home LAN is masqueraded too, because the home router has no route back to the guest subnets.
 - NAT does not define a forwarding firewall policy. These rules alone do not isolate management, service, and lab networks.
 
 ## Persistence and guest DNS
 
 - `homelab-router.service` loads the NAT rules at boot and reloads them when configuration changes. It replaces only the `homelab_nat` table.
 - `nft -c` validates the generated rules before Ansible installs the file.
-- **systemd-networkd** manages guest interface settings. The `vms/guest` role's `dns.yml` keeps DHCP on `ens3`, sets the configured DNS server, and disables DNS learned through DHCP.
+- **systemd-networkd** manages guest interface settings. The `vms/guest` role's `dns.yml`, which `playbooks/pihole.yml` runs on mgmt-01 only, keeps DHCP on `ens3`, sets the configured DNS server, and disables DNS learned through DHCP.
 - **systemd-resolved** handles guest DNS resolution. `Domains=~.` directs all DNS domains through the configured resolver.
 - The `vms/guest` role reloads networkd and applies interface DNS with `resolvectl` without replacing the DHCP lease. It restarts resolved when its configuration changes.
 - Guest DNS tasks expect `systemd-networkd`, `systemd-resolved`, and interface `ens3` to exist; they do not install those services.

@@ -30,12 +30,28 @@
   roles:
     - vms/hypervisor
 
-- name: Prepare VMs
-  hosts: vm
+# Every other VM resolves names through Pi-hole, so mgmt-01 and Pi-hole come first.
+- name: Prepare the Pi-hole VM
+  hosts: pihole
   gather_facts: false
   become: true
 
-  # On a fresh build mgmt-01, which carries the Tailscale subnet routes, is itself one of these VMs.
+  # VMs are reached through the hypervisor because mgmt-01's Tailscale subnet routes may not exist yet.
+  vars:
+    ansible_ssh_common_args: "{{ vm_hypervisor_proxy_args }}"
+
+  roles:
+    - vms/guest
+
+- import_playbook: pihole.yml
+  vars:
+    ansible_ssh_common_args: "{{ vm_hypervisor_proxy_args }}"
+
+- name: Prepare the other VMs
+  hosts: vm:!pihole
+  gather_facts: false
+  become: true
+
   vars:
     ansible_ssh_common_args: "{{ vm_hypervisor_proxy_args }}"
 

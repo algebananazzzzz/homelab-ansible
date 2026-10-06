@@ -1,25 +1,4 @@
 ---
-# Every VM resolves names through Pi-hole, so it comes first.
-- name: Deploy Pi-hole
-  hosts: pihole
-  gather_facts: false
-  become: true
-
-  roles:
-    - core/pihole
-
-# Only after Pi-hole runs: mgmt-01 hosts it and would otherwise lose DNS on a fresh build.
-- name: Point every VM at Pi-hole for DNS
-  hosts: vm
-  gather_facts: false
-  become: true
-
-  tasks:
-    - name: Configure VM DNS
-      ansible.builtin.include_role:
-        name: vms/guest
-        tasks_from: dns
-
 - name: Deploy Consul server
   hosts: consul_server
   gather_facts: false
