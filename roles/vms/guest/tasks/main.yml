@@ -21,5 +21,19 @@
 - name: Gather VM facts
   ansible.builtin.setup:
 
+# Installed here, not by cloud-init, because a VM may boot before Pi-hole can resolve for it.
+- name: Install guest packages
+  ansible.builtin.apt:
+    name:
+      - git
+      - qemu-guest-agent
+    state: present
+    update_cache: true
+
+- name: Start QEMU guest agent
+  ansible.builtin.systemd_service:
+    name: qemu-guest-agent
+    state: started
+
 - name: Install Docker
   ansible.builtin.import_tasks: docker.yml

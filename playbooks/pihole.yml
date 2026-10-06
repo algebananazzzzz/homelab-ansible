@@ -1,0 +1,15 @@
+---
+- name: Deploy Pi-hole
+  hosts: pihole
+  gather_facts: false
+  become: true
+
+  roles:
+    - core/pihole
+
+  tasks:
+    # br-mgmt hands out a public resolver so mgmt-01 can boot before Pi-hole exists on it.
+    - name: Point mgmt-01 at Pi-hole
+      ansible.builtin.include_role:
+        name: vms/guest
+        tasks_from: dns
