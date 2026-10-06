@@ -82,7 +82,7 @@ How the guest receives them:
 
 - Libvirt's **dnsmasq** provides DHCP for each network. Only a network with a `domain` also serves DNS.
 - A **DHCP pool** supplies dynamic addresses. A **reservation** maps a guest MAC to a fixed address; the guest still uses DHCP.
-- Reservations for the management and service networks derive from VM definitions with an `address`. Guests without one use the network's dynamic pool.
+- br-mgmt and br-svc have no pool, so every VM on them needs an `address` in its VM definition, which becomes its reservation. br-lab has only a pool.
 - DHCP hands each guest its network's `dns_server`. br-svc and br-lab hand out Pi-hole on `mgmt-01`. br-mgmt hands out a public resolver, because mgmt-01 boots before Pi-hole exists on it.
 - br-lab's dnsmasq answers `lab.home.arpa` from its leases when Pi-hole forwards to it. `localOnly` makes it answer an unknown name there with NXDOMAIN rather than forward it back to Pi-hole.
 
@@ -91,7 +91,7 @@ How the guest receives them:
 - **IP forwarding** lets the host route traffic between interfaces. `routing.yml` enables `net.ipv4.ip_forward` immediately and persists it through a sysctl configuration file.
 - **NAT** rewrites packet addresses. `nat.yml` installs an nftables ruleset in the dedicated `homelab_nat` table.
 - **Masquerading** rewrites internal guests' source addresses to the host's outgoing address when traffic leaves through the uplink. Return traffic follows the tracked translation.
-- Traffic destined for the home LAN is excluded from masquerading. Replies therefore need a route back to the guest subnet.
+- Traffic to the home LAN is masqueraded too, because the home router has no route back to the guest subnets.
 - NAT does not define a forwarding firewall policy. These rules alone do not isolate management, service, and lab networks.
 
 ## Persistence and guest DNS
