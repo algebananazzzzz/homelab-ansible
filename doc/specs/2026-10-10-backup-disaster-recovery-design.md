@@ -17,7 +17,7 @@ Nothing is backed up today. Komodo variables (every app's database password, sec
 - Komodo variables stay in Komodo. MongoDB is backed up whole; a rebuild restores only the variables from it.
 - Komodo MongoDB and lab VMs are backed up nightly at 00:00, not hourly. Komodo variables change only when an app or secret is added, so a day's loss means recreating that day's secrets by hand.
 - Each stack declares its own backup: a `homelab.backup: "true"` label on a service marks every named volume it mounts. Ansible never lists apps, so adding an app needs no playbook run.
-- Retention: 27 hourly and 7 daily snapshots.
+- Retention: 27 hourly and 7 daily snapshots for the hourly jobs, 7 daily for the nightly ones.
 - Failures push to ntfy immediately. A timer that silently stops firing is left to the observability platform's host-down alerts.
 
 ## Repository and credentials
@@ -56,13 +56,19 @@ Every backup runs `restic backup` with `--retry-lock 30m`, so a run that overlap
 ### `postgres` on svc-db-01
 
 1. Empty `/var/backups/postgres`.
-2. List databases with `SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres'`, then `pg_dump -Fc` each to `<db>.dump` through `docker exec` on the container labelled `com.docker.compose.service=postgres`.
+2. List databases with `SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres'`, then `pg_dump -Fc` each to `<db>.dump` through `docker exec` on the `postgres` container.
 3. `pg_dumpall --globals-only` to `globals.sql`, for roles and their passwords.
 4. `restic backup /var/backups/postgres --tag postgres`.
 
 The script runs with `set -euo pipefail`, so a failed dump stops the run before upload, and the failure reaches ntfy. Databases are discovered on every run, so a database added to `initdb/10-databases.sql` is backed up without changing this role.
 
-svc-db-01 also runs the weekly maintenance timer (Sunday 04:30): `restic forget --keep-hourly 27 --keep-daily 7 --prune`, then `restic check`. It runs from one host only, because prune takes an exclusive lock on the repository. It alerts through the same `OnFailure=` path.
+svc-db-01 also runs the weekly maintenance timer (Sunday 04:30):
+
+1. `restic forget --group-by host,tags --tag postgres --tag volumes --keep-hourly 27 --keep-daily 7`
+2. `restic forget --group-by host,tags --tag mongo --tag lab-vms --keep-daily 7`
+3. `restic prune`, then `restic check`
+
+Nightly jobs get their own policy because `--keep-hourly 27` keeps the last 27 hours that have a snapshot, which for a nightly job is 27 nights. Grouping by tags instead of restic's default of paths keeps the `volumes` job in one group when its set of labelled volumes changes; grouped by paths, the old set would become a group that is never pruned. It runs from one host only, because prune takes an exclusive lock on the repository. It alerts through the same `OnFailure=` path.
 
 ### `mongo` on mgmt-01, nightly
 
@@ -101,7 +107,7 @@ hv-01 runs UGOS. To check during implementation: whether a UGOS firmware update 
 ## Changes in homelab-komodo
 
 - Add `homelab.backup: "true"` to the `outline`, `ntfy`, and `beaverhabits` services and to Authentik's `server` service.
-- Rename Outline's volume from `outline-data` to `data`, matching the other stacks. The migration runs once by hand: stop Outline, copy the old volume's contents into the new one, deploy, check that attachments and wiki diagrams load, then delete the old volume.
+- Rename Outline's volume key from `outline-data` to `data`, matching the other stacks. Its Docker name stays `homelab-outline-data`, so the data does not move.
 - The Outline page "Adding a Service" gets one rule: label the service `homelab.backup` if it keeps data in a named volume.
 
 ## Rebuild order
