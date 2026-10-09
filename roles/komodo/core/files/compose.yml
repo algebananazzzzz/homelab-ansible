@@ -34,15 +34,15 @@ services:
       KOMODO_DATABASE_USERNAME: komodo
       KOMODO_DATABASE_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
       KOMODO_JWT_SECRET: ${KOMODO_JWT_SECRET}
-      # Local admin is the way in while Authelia is down, since Authelia runs as a Komodo stack.
+      # Local admin is the way in while Authentik is down, since Authentik runs as a Komodo stack.
       KOMODO_LOCAL_AUTH: "true"
       KOMODO_INIT_ADMIN_USERNAME: admin
       KOMODO_INIT_ADMIN_PASSWORD: ${KOMODO_INIT_ADMIN_PASSWORD}
       KOMODO_DISABLE_LOCAL_USER_REGISTRATION: "true"
-      # A new OIDC user starts disabled, so signing in to Authelia alone grants nothing until an admin enables the user.
+      # A new OIDC user starts disabled, so signing in to Authentik alone grants nothing until an admin enables the user.
       KOMODO_DISABLE_OIDC_USER_REGISTRATION: "false"
       KOMODO_OIDC_ENABLED: "true"
-      KOMODO_OIDC_PROVIDER: https://auth.algebananazzzzz.com
+      KOMODO_OIDC_PROVIDER: https://sso.algebananazzzzz.com/application/o/komodo/
       KOMODO_OIDC_CLIENT_ID: komodo
       KOMODO_OIDC_CLIENT_SECRET: ${KOMODO_OIDC_CLIENT_SECRET}
       KOMODO_RESOURCE_POLL_INTERVAL: 5-min
