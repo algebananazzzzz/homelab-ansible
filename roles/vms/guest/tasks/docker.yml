@@ -95,3 +95,55 @@
     owner: root
     group: root
     mode: "0700"
+
+- name: Create journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure journald
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/homelab.conf
+    content: |
+      [Journal]
+      Storage=persistent
+      SystemMaxUse=2G
+      # Every container logs through docker.service, so this one unit's limit is shared by all of them.
+      RateLimitIntervalSec=30s
+      RateLimitBurst=50000
+    owner: root
+    group: root
+    mode: "0644"
+  register: journald_configuration
+
+- name: Restart journald
+  ansible.builtin.systemd_service:
+    name: systemd-journald.service
+    state: restarted
+  when: journald_configuration.changed
+
+# Containers keep the driver they were created with, so a change here needs every container recreated.
+- name: Send container logs to journald
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "journald",
+        "log-opts": {
+          "tag": "{{ '{{' }}.Name{{ '}}' }}",
+          "labels": "com.docker.compose.project,com.docker.compose.service"
+        }
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  register: docker_daemon_configuration
+
+- name: Restart Docker
+  ansible.builtin.systemd_service:
+    name: docker.service
+    state: restarted
+  when: docker_daemon_configuration.changed
