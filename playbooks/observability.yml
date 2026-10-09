@@ -14,11 +14,3 @@
 
   roles:
     - observability/node_exporter
-
-- name: Deploy Prometheus
-  hosts: prometheus
-  gather_facts: false
-  become: true
-
-  roles:
-    - observability/prometheus
