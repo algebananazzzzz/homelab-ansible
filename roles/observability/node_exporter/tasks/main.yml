@@ -10,3 +10,15 @@
     name: prometheus-node-exporter.service
     enabled: true
     state: started
+
+# hv-01 runs no Consul agent, so Prometheus lists it statically.
+- name: Register Node Exporter with Consul
+  ansible.builtin.include_role:
+    name: core/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: node
+      port: 9100
+      metrics_path: /metrics
+  when: inventory_hostname in groups['vm']

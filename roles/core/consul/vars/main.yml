@@ -1,0 +1,3 @@
+---
+# The server's project and container are both named consul; every other VM runs consul-agent.
+consul_project: "{{ 'consul' if inventory_hostname in groups['consul_server'] else 'consul-agent' }}"
