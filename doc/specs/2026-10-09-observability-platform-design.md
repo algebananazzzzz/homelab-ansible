@@ -93,7 +93,7 @@ hv-01 runs no Consul agent. It is the one static block in `prometheus.yml`: `10.
 
 ### Blackbox probes
 
-- `http_2xx`: an HTTPS GET to each Consul service carrying `traefik.enable=true`. A relabel rule extracts the first ``Host(`...`)`` from the service's Traefik router tag and probes that URL. TLS is verified against the homelab internal CA by mounting the host's `/etc/ssl/certs/ca-certificates.crt`, which Ansible's `proxy/internal_ca` trust task already populates, the same way the Windmill stack does.
+- `http_2xx`: an HTTPS GET to each Consul service carrying `traefik.enable=true`. A relabel rule extracts the first ``Host(`...`)`` from the service's Traefik router tag and probes that URL. TLS is verified against the homelab internal CA by mounting the host's `/etc/ssl/certs/ca-certificates.crt`, which Ansible's `proxy/internal_ca` trust task already populates, the same way the Windmill stack does. A service whose `/` is not meant to answer 2xx opts out with the tag `prometheus.probe=false`.
 - `dns_pihole`: resolves `home.arpa` against `10.10.10.10`.
 
 ### Storage and recording rules
