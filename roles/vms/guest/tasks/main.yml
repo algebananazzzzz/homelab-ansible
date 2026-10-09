@@ -21,6 +21,13 @@
 - name: Gather VM facts
   ansible.builtin.setup:
 
+# br-mgmt's DHCP resolver only suits mgmt-01, which boots before Pi-hole exists; later br-mgmt VMs use Pi-hole directly.
+- name: Use Pi-hole for DNS
+  ansible.builtin.import_tasks: dns.yml
+  when:
+    - vm_definition.network == 'br-mgmt'
+    - inventory_hostname not in groups['pihole']
+
 # Installed here, not by cloud-init, because a VM may boot before Pi-hole can resolve for it.
 - name: Install guest packages
   ansible.builtin.apt:

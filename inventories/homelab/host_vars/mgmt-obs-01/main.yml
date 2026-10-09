@@ -1,0 +1,9 @@
+---
+vm_definition:
+  name: mgmt-obs-01
+  network: br-mgmt
+  mac: '52:54:00:10:00:20'
+  address: 10.10.10.20
+  memory_mb: 3072
+  vcpus: 2
+  disk_gb: 40
