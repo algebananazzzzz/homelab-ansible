@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Paths: `A/` means `~/github.com/algebananazzzzz/homelab/homelab-ansible/`, `K/` means `~/github.com/algebananazzzzz/homelab/homelab-komodo/`. Run Ansible from `A/` with `.venv/bin/ansible-playbook`.
-- `mgmt-obs-01`: `br-mgmt`, `10.10.10.20`, MAC `52:54:00:10:00:20`, 2 vCPU, 4096 MiB, 40 GB.
+- `mgmt-obs-01`: `br-mgmt`, `10.10.10.20`, MAC `52:54:00:10:00:20`, 2 vCPU, 3072 MiB, 40 GB.
 - Push destinations are the literal address `10.10.10.20`, never a Consul name. Alertmanager posts to ntfy at `http://10.10.20.30:8092`, not through Traefik.
 - Retention is 7 days for every signal: Prometheus `--storage.tsdb.retention.time=7d` and `--storage.tsdb.retention.size=5GB`, Loki `retention_period: 168h`, Tempo `block_retention: 168h`.
 - Scraping is opt-in through the Consul tags `prometheus.scrape=true` and `prometheus.path=<path>`.
@@ -59,7 +59,7 @@ vm_definition:
   network: br-mgmt
   mac: '52:54:00:10:00:20'
   address: 10.10.10.20
-  memory_mb: 4096
+  memory_mb: 3072
   vcpus: 2
   disk_gb: 40
 ```
@@ -3539,8 +3539,17 @@ Checks 2, 3, and 4 passed in Task 7 Steps 5 and 7 and Task 8 Step 7.
 
 - [ ] **Step 2: Check resource use after 24 hours (acceptance check 7)**
 
-Run: `curl -s https://prometheus.ops.home.arpa/api/v1/query --data-urlencode 'query=node_memory_MemTotal_bytes{instance_name="mgmt-obs-01"} - node_memory_MemAvailable_bytes{instance_name="mgmt-obs-01"}' | jq -r '.data.result[0].value[1] | tonumber / 1073741824'; ssh -p 2222 song@10.10.10.1 free -g | grep Swap`
-Expected: under `3` GiB used on mgmt-obs-01, and hv-01 swap used no higher than the 4.7 GiB recorded on 2026-10-09.
+Run:
+
+```bash
+q() { curl -s https://prometheus.ops.home.arpa/api/v1/query --data-urlencode "query=$1" | jq -r '.data.result[0].value[1] // "none"'; }
+q 'sum(increase(container_oom_events_total{instance_name="mgmt-obs-01"}[24h]))'
+q 'max_over_time(rate(node_vmstat_pswpin{instance_name="mgmt-obs-01"}[5m])[24h:5m])'
+q 'min_over_time(instance:memory_available:ratio{instance_name="mgmt-obs-01"}[24h])'
+ssh -p 2222 song@10.10.10.1 free -g | grep Swap
+```
+
+Expected: `0` OOM events, a swap-in peak under `10` pages/s, a minimum available-memory ratio above `0.15`, and hv-01 swap used no higher than the 4.7 GiB recorded on 2026-10-09.
 
 - [ ] **Step 3: Push the Ansible commits**
 

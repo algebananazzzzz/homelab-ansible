@@ -33,9 +33,9 @@ A new VM, `mgmt-obs-01`, keeps the platform from sharing fate with Pi-hole and K
 | Network | `br-mgmt` |
 | Address | `10.10.10.20` (Pi-hole names it `mgmt-obs-01.home.arpa` from the inventory) |
 | MAC | `52:54:00:10:00:20` |
-| CPU / RAM / disk | 2 vCPU, 4096 MiB, 40 GB |
+| CPU / RAM / disk | 2 vCPU, 3072 MiB, 40 GB |
 
-hv-01 has 8.1 GiB available and 4.7 GiB already in swap at the time of writing, so the backends must stay under 3 GiB steady state.
+hv-01 has 8.1 GiB available and 4.7 GiB already in swap at the time of writing, so the VM gets 3 GiB: the backends need about 1.2 to 1.7 GiB steady state, leaving room for query spikes.
 
 Inventory changes:
 
@@ -261,7 +261,7 @@ The platform is done when all of these pass:
 4. `curl https://outline.algebananazzzzz.com` produces a `traefik` span in Tempo with the right status and duration.
 5. Stopping `beaverhabits` sends `ServiceDown` to the phone within 3 minutes, and starting it sends the resolved notification.
 6. The promtool and amtool checks pass.
-7. After 24 hours, `mgmt-obs-01` uses under 3 GiB of RAM, and hv-01's swap usage is no higher than the 4.7 GiB recorded on 2026-10-09.
+7. After 24 hours, `mgmt-obs-01` has had no OOM kills and no sustained swap-in, and hv-01's swap usage is no higher than the 4.7 GiB recorded on 2026-10-09.
 
 ## Out of scope
 
