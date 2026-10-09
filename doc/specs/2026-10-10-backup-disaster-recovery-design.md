@@ -10,12 +10,13 @@ Nothing is backed up today. Komodo variables (every app's database password, sec
 
 ## Decisions
 
-- Hourly backups. Up to an hour of writes can be lost. No point-in-time recovery and no WAL archiving.
+- Hourly backups for Postgres and app volumes. Up to an hour of writes can be lost. No point-in-time recovery and no WAL archiving.
 - One restic repository in one AWS S3 bucket for every host. Restic encrypts before upload and uploads only changed chunks.
 - Each host runs its own systemd timer, installed by a new Ansible role. Windmill does not run backups, because its own database is one of the things being backed up.
 - PostgreSQL is dumped one database per file, so one app can be rolled back alone. The edge case this exists for: Renovate bumps an image in homelab-komodo, Komodo deploys it within 5 minutes of merge, the new version migrates its tables on startup, and the old version cannot run on them. Restoring only that app's database from before the upgrade keeps every other app's writes.
 - Komodo variables stay in Komodo. MongoDB is backed up whole; a rebuild restores only the variables from it.
-- Lab VMs are backed up nightly at 00:00, not hourly.
+- Komodo MongoDB and lab VMs are backed up nightly at 00:00, not hourly. Komodo variables change only when an app or secret is added, so a day's loss means recreating that day's secrets by hand.
+- Each stack declares its own backup: a `homelab.backup: "true"` label on a service marks every named volume it mounts. Ansible never lists apps, so adding an app needs no playbook run.
 - Retention: 27 hourly and 7 daily snapshots.
 - Failures push to ntfy immediately. A timer that silently stops firing is left to the observability platform's host-down alerts.
 
@@ -48,7 +49,7 @@ The role on every host:
 - Installs `/usr/local/bin/backup-<job>`, rendered from the job template that host's `backup_job` names in its `host_vars`.
 - Installs `backup.service` and `backup.timer`, plus `backup-notify@.service`. `OnFailure=backup-notify@%n.service` posts the host and unit name to ntfy.
 
-Every backup runs `restic backup` with `--retry-lock 30m`, so a run that overlaps the weekly prune waits instead of failing. The timer uses `OnCalendar=hourly` and `RandomizedDelaySec=5min`, so four hosts do not all start at the same second.
+Every backup runs `restic backup` with `--retry-lock 30m`, so a run that overlaps the weekly prune waits instead of failing. The timer's `OnCalendar` comes from the job: `hourly` for `postgres` and `volumes`, `*-*-* 00:00:00` for `mongo` and `lab-vms`. `RandomizedDelaySec=5min` keeps hosts on the same schedule from starting at the same second.
 
 ## Jobs
 
@@ -63,29 +64,31 @@ The script runs with `set -euo pipefail`, so a failed dump stops the run before 
 
 svc-db-01 also runs the weekly maintenance timer (Sunday 04:30): `restic forget --keep-hourly 27 --keep-daily 7 --prune`, then `restic check`. It runs from one host only, because prune takes an exclusive lock on the repository. It alerts through the same `OnFailure=` path.
 
-### `mongo` on mgmt-01
+### `mongo` on mgmt-01, nightly
 
 1. `mongodump --archive` inside the Komodo `mongo` container, written to `/var/backups/mongo/komodo.archive`.
 2. `restic backup /var/backups/mongo --tag mongo`.
 
 ### `volumes` on svc-apps-01
 
-Backs up these Docker named volumes from `/var/lib/docker/volumes/<project>_<volume>/_data`:
+The job finds its volumes from container labels on every run:
 
-| Stack | Volume | Holds |
-|---|---|---|
-| outline | `outline-data` | attachments, including wiki diagrams |
-| authentik | `data` | media |
-| ntfy | `data` | users, tokens, message cache (sqlite) |
-| beaverhabits | `data` | all habit data |
+```bash
+for c in $(docker ps -aq --filter label=homelab.backup=true); do
+  docker inspect "$c" --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Source}}{{"\n"}}{{end}}{{end}}'
+done | sort -u
+```
 
-Sqlite databases are copied first with `sqlite3 <db> ".backup <copy>"` into `/var/backups/volumes`, so the copy is consistent while the app keeps running. The live sqlite files are excluded from the restic run. Plain files are read directly. Containers are never stopped. `restic backup` runs with `--tag volumes`.
+- `ps -a` includes stopped containers, so a stopped stack is still backed up.
+- Only named volumes are listed. Bind mounts such as Authentik's `./blueprints` come from git.
+- `sort -u` collapses a volume two services share, such as Authentik's server and worker.
+- No labelled container means nothing to back up, which the job treats as a failure so a lost label reaches ntfy.
 
-To check during implementation: the volume names Komodo's compose project naming produces, and whether beaverhabits' `USER_DISK` mode stores sqlite or plain files.
+Sqlite files inside those volumes are found by their `SQLite format 3` header, not by name, and copied first with `sqlite3 <db> ".backup <copy>"` into `/var/backups/volumes`, so the copy is consistent while the app keeps running. The live sqlite files are excluded from the restic run. Plain files are read directly. Containers are never stopped. `restic backup` runs with `--tag volumes`.
 
-### `lab-vms` on hv-01
+### `lab-vms` on hv-01, nightly
 
-A separate `OnCalendar=*-*-* 00:00:00` timer replaces the hourly one on this host. For each VM in `[lab]`:
+For each VM in `[lab]`:
 
 1. `virsh snapshot-create-as <vm> --disk-only --atomic --no-metadata` sends new writes to a temporary overlay, so the VM's own overlay stops changing.
 2. `restic backup` of that overlay and the Debian base image it depends on, `--tag lab-vms`.
@@ -94,6 +97,12 @@ A separate `OnCalendar=*-*-* 00:00:00` timer replaces the hourly one on this hos
 A failure after step 1 must still run step 3, so the script commits in an `EXIT` trap.
 
 hv-01 runs UGOS. To check during implementation: whether a UGOS firmware update wipes `/usr/local/bin` or `/etc/systemd/system`. If it does, the role installs under a persistent volume path, and the Disaster Recovery page notes that `make deploy` must rerun after a firmware update.
+
+## Changes in homelab-komodo
+
+- Add `homelab.backup: "true"` to the `outline`, `ntfy`, and `beaverhabits` services and to Authentik's `server` service.
+- Rename Outline's volume from `outline-data` to `data`, matching the other stacks. The migration runs once by hand: stop Outline, copy the old volume's contents into the new one, deploy, check that attachments and wiki diagrams load, then delete the old volume.
+- The Outline page "Adding a Service" gets one rule: label the service `homelab.backup` if it keeps data in a named volume.
 
 ## Rebuild order
 
@@ -117,10 +126,12 @@ To check during implementation: the exact name of Komodo's variables collection,
 - Each job runs once by hand (`systemctl start backup.service`), and `restic snapshots --tag <job>` shows the new snapshot with the expected files.
 - A forced failure (a wrong repository password in `/etc/restic/env` on one host) produces an ntfy push naming the host and unit. Then restore the correct file.
 - `restic restore` of `outline.dump` into a scratch Postgres container on svc-db-01 succeeds, and its `documents` table has the same row count as production.
+- The `volumes` snapshot contains exactly the four labelled volumes, and none of Windmill's `logs` or `cache`.
+- Removing the label from every service (on a scratch copy of the script, not in git) makes the `volumes` job fail and push to ntfy.
 
 ## Acceptance
 
-- All four hosts show hourly snapshots (lab VMs nightly) in `restic snapshots` for 24 hours with no ntfy failure pushes.
+- `restic snapshots` shows 24 hours of hourly `postgres` and `volumes` snapshots and a nightly `mongo` and `lab-vms` snapshot, with no ntfy failure pushes.
 - The weekly maintenance timer runs `forget --prune` and `check` without errors.
 - **Rebuild drill:** destroy svc-db-01 and svc-apps-01, recreate them with `make deploy`, follow steps 5 to 7 of the rebuild order, and open the Outline Disaster Recovery page with its diagrams intact. Then sign in through Authentik and open a Kaneo board.
 - The Disaster Recovery page's "Rebuild order" and "Restoring data" sections are written from the drill, including anything that differed from this spec.
