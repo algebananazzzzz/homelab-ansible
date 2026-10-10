@@ -1,0 +1,8 @@
+[Unit]
+Description=Prune and check the restic repository
+OnFailure=backup-notify@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic/env
+ExecStart=/usr/local/bin/backup-prune

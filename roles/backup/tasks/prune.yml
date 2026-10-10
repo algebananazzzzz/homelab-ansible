@@ -1,0 +1,19 @@
+---
+- name: Install the prune script and units
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: backup-prune, dest: /usr/local/bin/backup-prune, mode: "0755" }
+    - { src: backup-prune.service, dest: /etc/systemd/system/backup-prune.service, mode: "0644" }
+    - { src: backup-prune.timer, dest: /etc/systemd/system/backup-prune.timer, mode: "0644" }
+
+- name: Enable the prune timer
+  ansible.builtin.systemd_service:
+    name: backup-prune.timer
+    enabled: true
+    state: started
+    daemon_reload: true

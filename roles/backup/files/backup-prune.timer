@@ -1,0 +1,10 @@
+[Unit]
+Description=Prune and check the restic repository weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 04:30:00 Asia/Singapore
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -6,3 +6,14 @@
 
   roles:
     - backup
+
+- name: Prune and check the backup repository
+  hosts: backup_prune
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Install the weekly prune
+      ansible.builtin.include_role:
+        name: backup
+        tasks_from: prune

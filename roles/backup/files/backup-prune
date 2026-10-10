@@ -1,0 +1,8 @@
+#!/bin/bash
+# Nightly jobs need their own rule: --keep-hourly counts hours that have a snapshot, which for them means nights.
+# Grouping by tags keeps the volumes job in one group when its labelled set, and so its paths, change.
+set -euo pipefail
+restic forget --retry-lock 30m --group-by host,tags --tag postgres --tag volumes --keep-hourly 27 --keep-daily 7
+restic forget --retry-lock 30m --group-by host,tags --tag mongo --tag lab-vms --keep-daily 7
+restic prune --retry-lock 30m
+restic check --retry-lock 30m
