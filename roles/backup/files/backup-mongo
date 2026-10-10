@@ -1,0 +1,12 @@
+#!/bin/bash
+# Komodo variables hold every app's secrets and exist nowhere else.
+set -euo pipefail
+out=/var/backups/mongo
+rm -rf "$out"
+mkdir -p -m 0700 "$out"
+
+docker exec komodo-mongo sh -c 'mongodump --quiet --archive --db komodo \
+  -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin' \
+  > "$out/komodo.archive"
+
+restic backup --retry-lock 30m --tag mongo "$out"
