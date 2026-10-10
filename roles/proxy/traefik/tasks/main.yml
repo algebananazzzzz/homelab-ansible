@@ -36,3 +36,13 @@
     wait: true
     # dynamic.yml is bind-mounted as a single file, so the container keeps the old copy until it is recreated.
     recreate: "{{ 'always' if traefik_dynamic_configuration.changed else 'auto' }}"
+
+- name: Register Traefik metrics with Consul
+  ansible.builtin.include_role:
+    name: core/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: traefik
+      port: 8082
+      metrics_path: /metrics

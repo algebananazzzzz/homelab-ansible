@@ -11,6 +11,14 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
+      - --entrypoints.metrics.address=:8082
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entryPoint=metrics
+      - --tracing.otlp.http.endpoint=http://10.10.10.20:4318/v1/traces
+      - --tracing.serviceName=traefik
+      - --tracing.sampleRate=1.0
+      - --accesslog=true
+      - --accesslog.format=json
       - --providers.consulcatalog.endpoint.address=127.0.0.1:8500
       - --providers.consulcatalog.exposedbydefault=false
       - --providers.consulcatalog.watch=true
