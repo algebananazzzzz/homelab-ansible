@@ -7,6 +7,14 @@
   roles:
     - observability/cadvisor
 
+- name: Ship journald logs to Loki
+  hosts: docker_hosts
+  gather_facts: false
+  become: true
+
+  roles:
+    - observability/fluent_bit
+
 - name: Install Node Exporter
   hosts: hypervisor:vm
   gather_facts: true

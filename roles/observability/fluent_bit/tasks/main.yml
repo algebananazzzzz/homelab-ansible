@@ -1,0 +1,63 @@
+---
+- name: Create Fluent Bit directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/fluent-bit"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+# Holds the journal cursor and the output buffer, so a restart neither repeats nor loses lines.
+- name: Create Fluent Bit state directory
+  ansible.builtin.file:
+    path: /var/lib/fluent-bit
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write Fluent Bit Compose file
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/fluent-bit/compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Write Fluent Bit pipeline
+  ansible.builtin.template:
+    src: fluent-bit.yaml.j2
+    dest: "{{ compose_root }}/fluent-bit/fluent-bit.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: fluent_bit_pipeline
+
+- name: Write Fluent Bit level script
+  ansible.builtin.copy:
+    src: level.lua
+    dest: "{{ compose_root }}/fluent-bit/level.lua"
+    owner: root
+    group: root
+    mode: "0644"
+  register: fluent_bit_script
+
+- name: Start Fluent Bit
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/fluent-bit"
+    remove_orphans: true
+    wait: true
+    # The configuration is bind-mounted, which Compose does not track.
+    recreate: "{{ 'always' if fluent_bit_pipeline.changed or fluent_bit_script.changed else 'auto' }}"
+
+# hv-01 runs no Consul agent, so Prometheus lists it statically.
+- name: Register Fluent Bit with Consul
+  ansible.builtin.include_role:
+    name: core/consul
+    tasks_from: register
+  vars:
+    consul_service:
+      name: fluent-bit
+      port: 2020
+      metrics_path: /api/v2/metrics/prometheus
+  when: inventory_hostname in groups['vm']
