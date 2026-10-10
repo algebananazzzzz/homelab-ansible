@@ -223,8 +223,8 @@ Every threshold lives in its rule file and gets tuned against real traffic.
 
 ## Grafana
 
-- Anyone on the home network gets Grafana Admin without signing in (anonymous access, role Admin), because the network is trusted and Grafana is reachable only inside it. Authentik OIDC stays configured, with its client secret in Komodo variable `GRAFANA_OIDC_CLIENT_SECRET`, for a named login. Grafana mounts the host CA bundle to verify `sso.algebananazzzzz.com`'s chain like the other stacks.
-- A local break-glass admin, password in Komodo variable `GRAFANA_ADMIN_PASSWORD`.
+- Anyone on the home network gets org Admin without signing in (anonymous access), because the network is trusted and Grafana is reachable only inside it. There is no SSO: one person runs it, so named logins would add only stars, preferences, and edit attribution.
+- The local `admin` account, password in Komodo variable `GRAFANA_ADMIN_PASSWORD`, is the only login. It exists for the server-admin pages anonymous org Admin cannot reach, such as plugins and server settings.
 - SQLite on local disk, not the shared Postgres.
 - Datasources (Prometheus, Loki, Tempo, Alertmanager) provisioned from files with fixed UIDs.
 - Dashboards provisioned from JSON in the Komodo repo into a "Homelab" folder. UI edits persist only once exported back into the repo. A "Scratch" folder holds experiments.
