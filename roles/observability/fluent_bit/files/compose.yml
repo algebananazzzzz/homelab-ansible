@@ -7,9 +7,6 @@ services:
     entrypoint: ["/fluent-bit/bin/fluent-bit"]
     command: ["-c", "/fluent-bit/etc/fluent-bit.yaml"]
     network_mode: host
-    # hv-01's Docker default stays json-file under UGOS.
-    logging:
-      driver: journald
     volumes:
       - ./fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
       - ./level.lua:/fluent-bit/etc/level.lua:ro

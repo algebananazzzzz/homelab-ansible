@@ -47,7 +47,7 @@ Inventory changes:
 
 | Owner | What |
 |---|---|
-| Ansible (`homelab-ansible`) | the `mgmt-obs-01` VM and Komodo Periphery on it; Docker `daemon.json` and journald limits; Fluent Bit, node_exporter, and cAdvisor on every host; Consul registrations for those agents on each VM; Traefik metrics, tracing, and access logs |
+| Ansible (`homelab-ansible`) | the `mgmt-obs-01` VM and Komodo Periphery on it; Docker `daemon.json` and journald limits; Fluent Bit and cAdvisor on every VM, node_exporter on every VM and hv-01; Consul registrations for those agents on each VM; Traefik metrics, tracing, and access logs |
 | Komodo (`homelab-komodo`, new `stacks/observability/` group on `mgmt-obs-01`) | Prometheus, Loki, Tempo, Alertmanager, Grafana, blackbox_exporter, consul_exporter, their config, rule files, and dashboards |
 | Komodo (inside existing stacks) | postgres_exporter in `postgres`, redis_exporter in `redis`, Authentik's metrics port registered in `authentik` |
 
@@ -75,7 +75,7 @@ Prometheus uses `consul_sd_configs` and scrapes only services tagged `prometheus
 
 Ansible registers each VM's node_exporter and cAdvisor in Consul as `node` and `cadvisor`. The resulting `job="node"`, `job="cadvisor"`, and `instance_name` labels match today's, so the Glance monitoring widget keeps working unchanged.
 
-hv-01 runs no Consul agent. It is the one static block in `prometheus.yml`: `10.10.10.1:9100` (`node`), `10.10.10.1:8081` (`cadvisor`), and `10.10.10.1:2020` (`fluent-bit`), all with `instance_name: hv-01`.
+hv-01 runs no Consul agent, and only its host health is monitored, because UGOS manages its containers and logs. Its node_exporter is the one static target in `prometheus.yml`: `10.10.10.1:9100` (`node`) with `instance_name: hv-01`.
 
 ### Sources
 
@@ -122,18 +122,18 @@ Existing containers keep the old driver until they are recreated, so the rollout
 
 journald gets `SystemMaxUse=2G` as the local buffer, and `RateLimitBurst` is raised because every container's output arrives through `docker.service` as one unit.
 
-hv-01's Docker daemon is managed by UGOS and stays untouched. Its host journal is shipped, and any Ansible-managed stack on it sets `logging: driver: journald` per service.
+hv-01's Docker daemon and journal are managed by UGOS and stay untouched; no logs are shipped from it.
 
 ### Fluent Bit
 
-A container on every host from the Ansible role `observability/fluent_bit`, following the cAdvisor role's pattern. It mounts `/var/log/journal` and `/etc/machine-id` read-only, plus a state directory.
+A container on every VM from the Ansible role `observability/fluent_bit`, following the cAdvisor role's pattern. It mounts `/var/log/journal` and `/etc/machine-id` read-only, plus a state directory.
 
 - **Input:** `systemd`, with a cursor database in the state directory. It starts at the tail on first run.
 - **Filters:** rename `_HOSTNAME`→`host`, `_SYSTEMD_UNIT`→`unit`, `CONTAINER_NAME`→`container`, and the compose label fields→`compose_project`/`compose_service`. Map `PRIORITY` to `level`. Drop all other journal fields.
 - **Output:** `loki` at `http://10.10.10.20:3100`.
   - Labels: `host`, `unit`, `compose_project`, `compose_service`.
   - Structured metadata: `container`, `level`. These stay out of labels because their values are many and change, which would multiply Loki's streams.
-- **Buffering:** filesystem storage with `storage.total_limit_size 1G` and unlimited retries.
+- **Buffering:** filesystem storage with `storage.total_limit_size 1G`, unlimited retries, and retry backoff capped at 30 seconds. State lives in `/var/lib/fluent-bit`. Loki's `max_chunk_age: 4h` accepts lines up to 2 hours behind their stream, so a Loki outage longer than about 2 hours loses its earliest lines, and `FluentBitOutputErrors` fires.
 
 ### Loki
 

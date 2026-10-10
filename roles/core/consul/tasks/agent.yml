@@ -16,6 +16,18 @@
     group: root
     mode: "0755"
 
+# A client agent leaves the cluster on SIGTERM by default, which deletes its node and services from the catalog;
+# Prometheus then loses the targets instead of seeing them down, so a cleanly stopped VM never pages.
+- name: Keep a stopped agent's node in the catalog
+  ansible.builtin.copy:
+    dest: "{{ compose_root }}/consul-agent/config/agent.hcl"
+    content: |
+      leave_on_terminate = false
+    owner: root
+    group: root
+    mode: "0644"
+  register: consul_agent_configuration
+
 - name: Write Consul agent Compose file
   ansible.builtin.copy:
     src: agent-compose.yml
@@ -29,3 +41,9 @@
     project_src: "{{ compose_root }}/consul-agent"
     remove_orphans: true
     wait: true
+
+- name: Restart Consul agent for its configuration
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/consul-agent"
+    state: restarted
+  when: consul_agent_configuration.changed

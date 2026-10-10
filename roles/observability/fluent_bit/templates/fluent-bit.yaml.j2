@@ -7,6 +7,8 @@ service:
   storage.path: /fluent-bit/state/buffer
   storage.sync: normal
   storage.backlog.mem_limit: 16M
+  # Backoff otherwise grows past 30 minutes, and Loki rejects lines more than 2 hours behind their stream.
+  scheduler.cap: 30
 
 pipeline:
   inputs:

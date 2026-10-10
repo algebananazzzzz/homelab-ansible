@@ -21,7 +21,6 @@
     remove_orphans: true
     wait: true
 
-# hv-01 runs no Consul agent, so Prometheus lists it statically.
 - name: Register cAdvisor with Consul
   ansible.builtin.include_role:
     name: core/consul
@@ -31,4 +30,3 @@
       name: cadvisor
       port: 8081
       metrics_path: /metrics
-  when: inventory_hostname in groups['vm']

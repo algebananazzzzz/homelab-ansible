@@ -1,6 +1,7 @@
 ---
+# UGOS manages hv-01's containers and logs, so only the VMs get container metrics and log shipping.
 - name: Deploy cAdvisor
-  hosts: docker_hosts
+  hosts: vm
   gather_facts: false
   become: true
 
@@ -8,7 +9,7 @@
     - observability/cadvisor
 
 - name: Ship journald logs to Loki
-  hosts: docker_hosts
+  hosts: vm
   gather_facts: false
   become: true
 

@@ -50,7 +50,6 @@
     # The configuration is bind-mounted, which Compose does not track.
     recreate: "{{ 'always' if fluent_bit_pipeline.changed or fluent_bit_script.changed else 'auto' }}"
 
-# hv-01 runs no Consul agent, so Prometheus lists it statically.
 - name: Register Fluent Bit with Consul
   ansible.builtin.include_role:
     name: core/consul
@@ -60,4 +59,3 @@
       name: fluent-bit
       port: 2020
       metrics_path: /api/v2/metrics/prometheus
-  when: inventory_hostname in groups['vm']
