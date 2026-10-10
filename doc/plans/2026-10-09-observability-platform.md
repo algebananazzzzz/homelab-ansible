@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Paths: `A/` means `~/github.com/algebananazzzzz/homelab/homelab-ansible/`, `K/` means `~/github.com/algebananazzzzz/homelab/homelab-komodo/`. Run Ansible from `A/` with `.venv/bin/ansible-playbook`.
-- `mgmt-obs-01`: `br-mgmt`, `10.10.10.20`, MAC `52:54:00:10:00:20`, 2 vCPU, 3072 MiB, 40 GB.
+- `mgmt-obs-01`: `br-mgmt`, `10.10.10.20`, MAC `52:54:00:10:00:20`, 2 vCPU, 4096 MiB, 40 GB.
 - Push destinations are the literal address `10.10.10.20`, never a Consul name. Alertmanager posts to ntfy at `http://10.10.20.30:8092`, not through Traefik.
 - Retention is 7 days for every signal: Prometheus `--storage.tsdb.retention.time=7d` and `--storage.tsdb.retention.size=5GB`, Loki `retention_period: 168h`, Tempo `block_retention: 168h`.
 - Scraping is opt-in through the Consul tags `prometheus.scrape=true` and `prometheus.path=<path>`.
@@ -59,7 +59,7 @@ vm_definition:
   network: br-mgmt
   mac: '52:54:00:10:00:20'
   address: 10.10.10.20
-  memory_mb: 3072
+  memory_mb: 4096
   vcpus: 2
   disk_gb: 40
 ```
@@ -1750,7 +1750,7 @@ groups:
     rules:
       - alert: KernelOOMKill
         expr: |
-          sum by (host) (count_over_time({host=~".+"} |= "Out of memory: Killed process" [5m])) > 0
+          sum by (host) (count_over_time({host=~".+", unit=""} |= "Out of memory: Killed process" [5m])) > 0
         labels:
           severity: warning
         annotations:

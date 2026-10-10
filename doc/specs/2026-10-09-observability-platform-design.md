@@ -33,9 +33,9 @@ A new VM, `mgmt-obs-01`, keeps the platform from sharing fate with Pi-hole and K
 | Network | `br-mgmt` |
 | Address | `10.10.10.20` (Pi-hole names it `mgmt-obs-01.home.arpa` from the inventory) |
 | MAC | `52:54:00:10:00:20` |
-| CPU / RAM / disk | 2 vCPU, 3072 MiB, 40 GB |
+| CPU / RAM / disk | 2 vCPU, 4096 MiB, 40 GB |
 
-hv-01 has 8.1 GiB available and 4.7 GiB already in swap at the time of writing, so the VM gets 3 GiB: the backends need about 1.2 to 1.7 GiB steady state, leaving room for query spikes.
+hv-01 has 8.1 GiB available and 4.7 GiB already in swap at the time of writing, so the VM gets 4 GiB: measured on 2026-10-10, the backends used about 2.1 GiB, with Prometheus at 780 MiB and Grafana at 560 MiB. 3 GiB left only 10% available at peak.
 
 Inventory changes:
 
