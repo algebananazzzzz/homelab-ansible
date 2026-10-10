@@ -223,7 +223,7 @@ Every threshold lives in its rule file and gets tuned against real traffic.
 
 ## Grafana
 
-- Authentik OIDC through a new Authentik provider and application, set up the same way as Outline and Kaneo, with its client secret in Komodo variable `GRAFANA_OIDC_CLIENT_SECRET`. The user's account maps to Admin. Grafana mounts the host CA bundle to verify `sso.algebananazzzzz.com`'s chain like the other stacks.
+- Anyone on the home network gets Grafana Admin without signing in (anonymous access, role Admin), because the network is trusted and Grafana is reachable only inside it. Authentik OIDC stays configured, with its client secret in Komodo variable `GRAFANA_OIDC_CLIENT_SECRET`, for a named login. Grafana mounts the host CA bundle to verify `sso.algebananazzzzz.com`'s chain like the other stacks.
 - A local break-glass admin, password in Komodo variable `GRAFANA_ADMIN_PASSWORD`.
 - SQLite on local disk, not the shared Postgres.
 - Datasources (Prometheus, Loki, Tempo, Alertmanager) provisioned from files with fixed UIDs.
