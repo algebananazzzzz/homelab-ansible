@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up {{ backup_job }} on schedule
+
+[Timer]
+OnCalendar={{ backup_schedules[backup_job] }}
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

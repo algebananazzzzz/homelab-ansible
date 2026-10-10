@@ -11,3 +11,4 @@ vm_definition:
   memory_mb: 3072
   vcpus: 2
   disk_gb: 20
+backup_job: mongo

@@ -4,3 +4,4 @@ ansible_host: "{{ '192.168.50.39' if vm_via_hypervisor | default(false) | bool e
 ansible_port: 2222
 hostname: DXP4800PRO-F0EE
 storage_root: /volume1/@kvm/homelab
+backup_job: lab-vms

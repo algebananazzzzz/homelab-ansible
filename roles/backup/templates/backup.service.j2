@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up {{ backup_job }} to restic
+OnFailure=backup-notify@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic/env
+{% if backup_job == 'lab-vms' %}
+Environment="LAB_VMS={{ groups['lab'] | join(' ') }}" "STORAGE_ROOT={{ storage_root }}"
+{% endif %}
+ExecStart=/usr/local/bin/backup-{{ backup_job }}

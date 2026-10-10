@@ -7,3 +7,4 @@ vm_definition:
   memory_mb: 4096
   vcpus: 2
   disk_gb: 20
+backup_job: postgres

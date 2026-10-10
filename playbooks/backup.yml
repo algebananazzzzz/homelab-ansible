@@ -1,0 +1,8 @@
+---
+- name: Back up state git cannot recreate
+  hosts: backup
+  gather_facts: false
+  become: true
+
+  roles:
+    - backup

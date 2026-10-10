@@ -7,3 +7,4 @@ vm_definition:
   memory_mb: 6144
   vcpus: 4
   disk_gb: 30
+backup_job: volumes

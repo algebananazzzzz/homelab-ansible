@@ -1,0 +1,7 @@
+[Unit]
+Description=Report a failed %i to ntfy
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic/env
+ExecStart=/usr/local/bin/backup-notify %i
