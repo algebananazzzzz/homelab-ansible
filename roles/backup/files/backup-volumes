@@ -1,0 +1,42 @@
+#!/bin/bash
+# Each stack opts in with the homelab.backup label, so adding an app never needs a playbook run.
+set -euo pipefail
+copies=/var/backups/volumes
+rm -rf "$copies"
+mkdir -p -m 0700 "$copies"
+
+# -a includes stopped containers, so a stopped stack is still backed up.
+containers=$(docker ps -aq --filter label=homelab.backup=true)
+if [ -z "$containers" ]; then
+  echo "no container has the homelab.backup label" >&2
+  exit 1
+fi
+
+# Captured before parsing so a failed inspect stops the run; bind mounts come from git and are skipped.
+mounts=$(docker inspect $containers \
+  --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{.Source}}{{"\n"}}{{end}}{{end}}')
+mapfile -t volumes < <(printf '%s\n' "$mounts" | sed '/^$/d' | sort -u)
+if [ "${#volumes[@]}" -eq 0 ]; then
+  echo "labelled containers mount no named volumes" >&2
+  exit 1
+fi
+
+paths=()
+excludes=()
+for entry in "${volumes[@]}"; do
+  name=${entry%% *}
+  source=${entry#* }
+  paths+=("$source")
+  # Copying a live sqlite file can catch a half-written page, so sqlite gets an online .backup copy instead.
+  while IFS= read -r -d '' file; do
+    if [ "$(head -c 15 "$file")" = "SQLite format 3" ]; then
+      copy="$copies/$name/${file#"$source"/}"
+      mkdir -p "$(dirname "$copy")"
+      sqlite3 "$file" ".backup '$copy'"
+      # The copy already includes the WAL; restoring a stale -wal beside it would corrupt the database.
+      excludes+=(--exclude "$file" --exclude "$file-wal" --exclude "$file-shm")
+    fi
+  done < <(find "$source" -type f -size +99c -print0)
+done
+
+restic backup --retry-lock 30m --tag volumes "${excludes[@]}" "${paths[@]}" "$copies"
