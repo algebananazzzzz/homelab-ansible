@@ -1,0 +1,21 @@
+#!/bin/bash
+# One dump per database, so one app can be rolled back without losing other apps' writes (see the spec's Renovate case).
+set -euo pipefail
+out=/var/backups/postgres
+rm -rf "$out"
+mkdir -p -m 0700 "$out"
+
+# Assigned before the loop so a failed query stops the run under set -e.
+databases=$(docker exec postgres psql -U admin -d postgres -Atc \
+  "SELECT datname FROM pg_database WHERE NOT datistemplate AND datname <> 'postgres'")
+if [ -z "$databases" ]; then
+  echo "no databases found" >&2
+  exit 1
+fi
+
+for db in $databases; do
+  docker exec postgres pg_dump -U admin -Fc "$db" > "$out/$db.dump"
+done
+docker exec postgres pg_dumpall -U admin --globals-only > "$out/globals.sql"
+
+restic backup --retry-lock 30m --tag postgres "$out"
