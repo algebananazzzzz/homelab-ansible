@@ -4,6 +4,11 @@ services:
   cadvisor:
     container_name: cadvisor
     image: ghcr.io/google/cadvisor:v0.60.5
+    # Only the groups Glance, the dashboards, and the alert rules read; the defaults cost Prometheus about 29k series, half of them hv-01's UGOS cgroups.
+    command:
+      - --docker_only=true
+      - --store_container_labels=false
+      - --enable_metrics=cpu,memory,network,disk,oom_event
     ports:
       - "8081:8080/tcp"
     privileged: true
