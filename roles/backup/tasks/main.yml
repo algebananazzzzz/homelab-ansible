@@ -42,15 +42,22 @@
   changed_when: backup_repository.stdout == 'initialised'
   run_once: true
 
-- name: Install the backup job and failure notifier
+- name: Install the backup job and metrics writer
   ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: "{{ item.mode }}"
+    src: "{{ item }}"
+    dest: /usr/local/bin/
+    mode: "0755"
   loop:
-    - { src: "backup-{{ backup_job }}", dest: /usr/local/bin/, mode: "0755" }
-    - { src: backup-notify, dest: /usr/local/bin/, mode: "0755" }
-    - { src: backup-notify@.service, dest: /etc/systemd/system/, mode: "0644" }
+    - backup-{{ backup_job }}
+    - backup-metrics
+
+# Counts the install as a success, so a job that never runs still goes stale.
+- name: Seed the backup metrics
+  ansible.builtin.command: /usr/local/bin/backup-metrics {{ backup_job }} {{ backup_schedules[backup_job].max_age }} backup.service
+  args:
+    creates: /var/lib/prometheus/node-exporter/backup-{{ backup_job }}.prom
+  environment:
+    SERVICE_RESULT: success
 
 - name: Install the backup service and timer
   ansible.builtin.template:

@@ -4,8 +4,10 @@ restic_sha256: f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c
 backup_bucket: lab-com-s3-homelab-backup
 restic_repository: s3:s3.ap-southeast-1.amazonaws.com/{{ backup_bucket }}/restic
 
+# max_age is how long after the last success Prometheus waits before BackupStale fires.
 backup_schedules:
-  postgres: hourly
-  volumes: hourly
-  mongo: "*-*-* 00:00:00 Asia/Singapore"
-  lab-vms: "*-*-* 00:00:00 Asia/Singapore"
+  postgres: { schedule: hourly, max_age: 10800 }
+  volumes: { schedule: hourly, max_age: 10800 }
+  mongo: { schedule: "*-*-* 00:00:00 Asia/Singapore", max_age: 93600 }
+  lab-vms: { schedule: "*-*-* 00:00:00 Asia/Singapore", max_age: 93600 }
+  prune: { schedule: "Sun *-*-* 04:30:00 Asia/Singapore", max_age: 691200 }

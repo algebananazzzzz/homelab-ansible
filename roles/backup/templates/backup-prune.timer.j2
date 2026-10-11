@@ -2,7 +2,7 @@
 Description=Prune and check the restic repository weekly
 
 [Timer]
-OnCalendar=Sun *-*-* 04:30:00 Asia/Singapore
+OnCalendar={{ backup_schedules.prune.schedule }}
 RandomizedDelaySec=5min
 Persistent=true
 

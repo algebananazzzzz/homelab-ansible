@@ -1,7 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-unit=$1
-journalctl -u "$unit" -n 5 --no-pager -o cat \
-  | curl -fsS -H "Authorization: Bearer $NTFY_TOKEN" \
-      -H "Title: $unit failed on $(hostname)" -H "Priority: high" -H "Tags: floppy_disk" \
-      --data-binary @- http://10.10.20.30:8092/homelab-backup

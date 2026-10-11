@@ -54,4 +54,3 @@ backup_secrets:
   aws_access_key_id: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_ACCESS_KEY_ID', default=undef()) }}"
   aws_secret_access_key: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_SECRET_ACCESS_KEY', default=undef()) }}"
   role_arn: "{{ lookup('ansible.builtin.env', 'RESTIC_AWS_ASSUME_ROLE_ARN', default=undef()) }}"
-  ntfy_token: "{{ lookup('ansible.builtin.env', 'NTFY_TOKEN', default=undef()) }}"

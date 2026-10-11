@@ -2,7 +2,7 @@
 Description=Back up {{ backup_job }} on schedule
 
 [Timer]
-OnCalendar={{ backup_schedules[backup_job] }}
+OnCalendar={{ backup_schedules[backup_job].schedule }}
 RandomizedDelaySec=5min
 Persistent=true
 

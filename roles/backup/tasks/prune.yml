@@ -1,13 +1,22 @@
 ---
 - name: Install the prune job
   ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: "{{ item.mode }}"
-  loop:
-    - { src: backup-prune, dest: /usr/local/bin/, mode: "0755" }
-    - { src: backup-prune.service, dest: /etc/systemd/system/, mode: "0644" }
-    - { src: backup-prune.timer, dest: /etc/systemd/system/, mode: "0644" }
+    src: backup-prune
+    dest: /usr/local/bin/
+    mode: "0755"
+
+- name: Install the prune service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+  loop: [backup-prune.service, backup-prune.timer]
+
+- name: Seed the prune metrics
+  ansible.builtin.command: /usr/local/bin/backup-metrics prune {{ backup_schedules.prune.max_age }} backup-prune.service
+  args:
+    creates: /var/lib/prometheus/node-exporter/backup-prune.prom
+  environment:
+    SERVICE_RESULT: success
 
 - name: Enable the prune timer
   ansible.builtin.systemd_service:

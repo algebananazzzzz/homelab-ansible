@@ -1,6 +1,5 @@
 [Unit]
 Description=Back up {{ backup_job }} to restic
-OnFailure=backup-notify@%n.service
 
 [Service]
 Type=oneshot
@@ -9,3 +8,4 @@ EnvironmentFile=/etc/restic/env
 Environment="LAB_VMS={{ groups['lab'] | join(' ') }}" "STORAGE_ROOT={{ vm_storage }}"
 {% endif %}
 ExecStart=/usr/local/bin/backup-{{ backup_job }}
+ExecStopPost=/usr/local/bin/backup-metrics {{ backup_job }} {{ backup_schedules[backup_job].max_age }} %n
