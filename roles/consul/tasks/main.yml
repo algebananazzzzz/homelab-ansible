@@ -1,0 +1,32 @@
+---
+- name: Create the Consul config directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/{{ consul_project }}/config"
+    state: directory
+
+- name: Write the Consul stack
+  ansible.builtin.copy:
+    src: "{{ 'server' if consul_server else 'agent' }}-compose.yml"
+    dest: "{{ compose_root }}/{{ consul_project }}/compose.yml"
+
+# A client leaves the catalog on SIGTERM by default, so a stopped VM would vanish from Prometheus instead of showing down.
+- name: Keep a stopped node in the catalog
+  ansible.builtin.copy:
+    src: agent.hcl
+    dest: "{{ compose_root }}/{{ consul_project }}/config/"
+  notify: Reload Consul
+
+- name: Register this host's services
+  ansible.builtin.template:
+    src: service.hcl.j2
+    dest: "{{ compose_root }}/{{ consul_project }}/config/{{ consul_service.name }}.hcl"
+  loop: "{{ consul_services + consul_host_services }}"
+  loop_control:
+    loop_var: consul_service
+    label: "{{ consul_service.name }}"
+  notify: Reload Consul
+
+- name: Start Consul
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/{{ consul_project }}"
+    wait: true

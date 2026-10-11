@@ -1,0 +1,31 @@
+<network xmlns:dnsmasq="http://libvirt.org/schemas/network/dnsmasq/1.0">
+  <name>{{ item.name }}</name>
+  <forward mode="open"/>
+  <bridge name="{{ item.name }}" stp="on" delay="0"/>
+{% if item.domain is defined %}
+  <domain name="{{ item.domain }}" localOnly="yes"/>
+{% else %}
+  <dns enable="no"/>
+{% endif %}
+  <ip address="{{ item.gateway }}" prefix="24">
+    <dhcp>
+{% if item.dhcp_start is defined %}
+      <range start="{{ item.dhcp_start }}" end="{{ item.dhcp_end }}"/>
+{% endif %}
+{% for host in groups['vm'] if hostvars[host].vm_definition.network == item.name %}
+      <host mac="{{ hostvars[host].vm_definition.mac }}" name="{{ host }}" ip="{{ hostvars[host].vm_definition.address }}"/>
+{% endfor %}
+    </dhcp>
+  </ip>
+  <dnsmasq:options>
+    <dnsmasq:option value="dhcp-option=option:dns-server,{{ item.dns_server }}"/>
+{% if item.public_dns_mac is defined %}
+    <dnsmasq:option value="dhcp-mac=set:public-dns,{{ item.public_dns_mac }}"/>
+    <dnsmasq:option value="dhcp-option=tag:public-dns,option:dns-server,8.8.8.8"/>
+{% endif %}
+{% if item.domain is defined %}
+    <!-- Accepts the queries Pi-hole forwards from br-mgmt. -->
+    <dnsmasq:option value="listen-address={{ item.gateway }}"/>
+{% endif %}
+  </dnsmasq:options>
+</network>

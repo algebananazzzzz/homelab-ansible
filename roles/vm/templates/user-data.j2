@@ -1,0 +1,15 @@
+#cloud-config
+hostname: {{ inventory_hostname }}
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: {{ ansible_user }}
+    groups:
+      - sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+{% for key in vm_authorized_keys %}
+      - {{ key }}
+{% endfor %}

@@ -6,6 +6,6 @@ OnFailure=backup-notify@%n.service
 Type=oneshot
 EnvironmentFile=/etc/restic/env
 {% if backup_job == 'lab-vms' %}
-Environment="LAB_VMS={{ groups['lab'] | join(' ') }}" "STORAGE_ROOT={{ storage_root }}"
+Environment="LAB_VMS={{ groups['lab'] | join(' ') }}" "STORAGE_ROOT={{ vm_storage }}"
 {% endif %}
 ExecStart=/usr/local/bin/backup-{{ backup_job }}

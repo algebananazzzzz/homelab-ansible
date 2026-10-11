@@ -1,5 +1,4 @@
 #!/bin/bash
-# Pushes the failed unit's last log lines to ntfy, so the phone shows why without an SSH session.
 set -euo pipefail
 unit=$1
 journalctl -u "$unit" -n 5 --no-pager -o cat \

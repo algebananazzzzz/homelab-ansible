@@ -1,0 +1,2 @@
+---
+vm_directory: "{{ vm_storage }}/{{ inventory_hostname }}"

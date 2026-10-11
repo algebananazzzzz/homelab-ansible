@@ -1,0 +1,23 @@
+name: cadvisor
+
+services:
+  cadvisor:
+    container_name: cadvisor
+    image: ghcr.io/google/cadvisor:v0.60.5
+    # The defaults cost Prometheus about 29k series; these are only what Glance, the dashboards and alerts read.
+    command:
+      - --docker_only=true
+      - --store_container_labels=false
+      - --enable_metrics=cpu,memory,network,disk,oom_event
+    ports:
+      - "8081:8080/tcp"
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped

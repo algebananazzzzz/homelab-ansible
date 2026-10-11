@@ -1,0 +1,11 @@
+tunnel: 9368815a-452c-4697-aff7-9d5940d6ee9a
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: "*.algebananazzzzz.com"
+    service: https://127.0.0.1:443
+    originRequest:
+      # Traefik chooses its router and certificate from the SNI, so it must carry the requested name.
+      matchSNItoHost: true
+      caPool: /etc/cloudflared/ca.crt
+  - service: http_status:404

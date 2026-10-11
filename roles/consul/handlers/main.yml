@@ -1,0 +1,3 @@
+---
+- name: Reload Consul
+  ansible.builtin.command: docker exec {{ consul_project }} consul reload

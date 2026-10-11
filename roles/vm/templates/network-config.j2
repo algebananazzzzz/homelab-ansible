@@ -1,0 +1,7 @@
+version: 2
+ethernets:
+  ens3:
+    match:
+      macaddress: "{{ vm_definition.mac }}"
+    set-name: ens3
+    dhcp4: true

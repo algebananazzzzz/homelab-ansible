@@ -1,0 +1,53 @@
+---
+- name: Install the certificate module dependency
+  ansible.builtin.apt:
+    name: python3-cryptography
+
+- name: Create the certificate directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/traefik/certs"
+    state: directory
+    mode: "0750"
+
+- name: Create the server key
+  community.crypto.openssl_privatekey:
+    path: "{{ compose_root }}/traefik/certs/server.key"
+    size: 2048
+
+- name: Describe the server certificate
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ compose_root }}/traefik/certs/server.key"
+    common_name: home.arpa
+    subject_alt_name:
+      - DNS:home.arpa
+      - DNS:auth.home.arpa
+      - DNS:*.svc.home.arpa
+      - DNS:*.ops.home.arpa
+      - DNS:*.media.home.arpa
+      - DNS:*.algebananazzzzz.com
+  register: server_csr
+  changed_when: false
+
+- name: Sign the server certificate with the internal CA
+  community.crypto.x509_certificate:
+    path: "{{ compose_root }}/traefik/certs/server.crt"
+    csr_content: "{{ server_csr.csr }}"
+    privatekey_path: "{{ compose_root }}/traefik/certs/server.key"
+    provider: ownca
+    ownca_content: "{{ internal_ca_certificate }}"
+    ownca_privatekey_content: "{{ internal_ca_key }}"
+  register: server_certificate
+
+- name: Write the Traefik stack
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ compose_root }}/traefik/"
+  loop: [compose.yml, dynamic.yml]
+  register: traefik_stack
+
+- name: Start Traefik
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/traefik"
+    wait: true
+    # A bind-mounted file that Ansible replaces keeps its old content in the container until it is recreated.
+    recreate: "{{ 'always' if traefik_stack.changed or server_certificate.changed else 'auto' }}"

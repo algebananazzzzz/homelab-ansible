@@ -1,0 +1,2 @@
+---
+consul_project: "{{ 'consul' if consul_server else 'consul-agent' }}"

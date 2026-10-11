@@ -1,33 +1,57 @@
 ---
-admin_user: song
-ansible_user: "{{ admin_user }}"
-hypervisor_host: "{{ groups['hypervisor'] | first }}"
-base_domain: algebananazzzzz.com
+ansible_user: song
 
-tls_certificate_domains:
-  - home.arpa
-  - auth.home.arpa
-  - "*.svc.home.arpa"
-  - "*.ops.home.arpa"
-  - "*.media.home.arpa"
-  - "*.{{ base_domain }}"
+vm_storage: /volume1/@kvm/homelab
+vm_base_image: debian-12-genericcloud-amd64-20260909-2596.qcow2
+vm_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICG7CTJp4Y6tXkbkvh+ElgV3z4TPZB1Irw9IZoyxcYGL daniel@weidong-XPS-15-9530
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKkATME0gl1EKW+dI+JpziIYnc7IsFWn9D32cea7O5OH song@DXP4800PRO-F0EE
 
-cloudflare:
-  tunnel_name: homelab
-  api_token: "{{ cloudflare_api_token }}"
-  tunnel_secret: "{{ cloudflare_tunnel_secret }}"
+internal_ca_certificate: |
+  -----BEGIN CERTIFICATE-----
+  MIIFHTCCAwWgAwIBAgIUdeL6+E2cPzOEEj1JljuZ7ysqlFYwDQYJKoZIhvcNAQEL
+  BQAwHjEcMBoGA1UEAwwTSG9tZUxhYiBJbnRlcm5hbCBDQTAeFw0yNjA5MjMwNjE1
+  NTRaFw0zNjA5MjAwNjE1NTRaMB4xHDAaBgNVBAMME0hvbWVMYWIgSW50ZXJuYWwg
+  Q0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDH26yRwAaq4LUq/cdN
+  gkhkpno9sD6DNCrsYjpLjZqqc/hcJMjLmQT7CRp3pt6q5tFsxCm64jfDkNnQiFBk
+  YTaoX1orVqrXyFsepKhhTX8S3fCSDOUWH+5HkU3V/vEFZUteZBcCElL8Vb2rV3oM
+  s7fSJug4SL1Jaaa4FFdWyusO4s4qJks/oDS3D/ZF0Pf3AfAWE3XK6uYgLXH5Vrkq
+  LRHpjO1cBbZcS2luV07v8+VAOa4pqiYXQq/aV7njH6EmMyvHczf7EsfB74DFhZBG
+  Din09pfmqWfjFG9dBQAWrIBjnXOPEsSu4+LTKAyb+OZ1Eq4zjsr9v1Xe4K1R8I3d
+  sPZQG+YJtbTRBJde1zyj3s3R6lBmrHGMsCKkNcGcoSqkSTSvQIMBuKy6sik5V1/i
+  kJj7DRtokFp5ngRdq0Go37qdOlJqXyhyBvn2NH2OTdGPX5bj+azj58rcIS/px346
+  Cm2IerTHfHJ0uIBlcLY3acL8uQzISLvR9Fv5HMeTzA7dQwIspKa6AoFoKBg1NjKz
+  F1vtz/fZvdMuJ4sNZyCnv4sWCTx6iVndNUHRmxwQS3Pfhpi0JQgdpcewqVq1udbQ
+  DchE7aplamhMoCEqmilTqyz7h0whVt/XmiIgEhoNmH3jwmWqdTZ7krHL52kcBEZq
+  QS+5u1qXYiZYE7agqTN/beSb2wIDAQABo1MwUTAdBgNVHQ4EFgQUSzkitEL0LJIK
+  vRE+H/3aV4sC60AwHwYDVR0jBBgwFoAUSzkitEL0LJIKvRE+H/3aV4sC60AwDwYD
+  VR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAtc54/MRwupEkW3KwG4z3
+  TJSw/Dhvm3avvksH5/GDqtVHTs98M/GKP+ViGleULXLJ7ozZPMp/T50+YBd7mlfh
+  cZK8WKFKet80ABhg3jYM1VnVpNlMOpa7OiGouSfa61Sg7DByU5uIAIXWWKbgSlPG
+  WXp+8X0cQeZdiy3UOEJi0mapc64Doa72jRfGd/LZeUEKbgWvucjl0GkCYZL2LfDH
+  iQZld26CGNqOSLSna3aGSs8/5RMwxevhZ2nDUI6+w/QEa8thYLypdfvW59OYjQWp
+  imWZ37c+Sq3XeosaObUd2Bo9r83lK7JWda0+ST8jhkC3EWGVHXSzLmrWJDV+O6qz
+  UBPWPhnrwfhkJ30CNPuTnYgGVUrAhkAQHwFyPVmFS5qR/LKm+Y38RR4iY56gq8ov
+  ZOxUrlQf6JH7NIKcm4ql8vP0rGYWoDvzTLEr/TY4nAK672PTScOPu2015vTGL/GJ
+  9hLS6KTCmqPQSnBGNrkMw4Pfowq3Mf2lRkiqz7wZ1l1HH2d3XVuDiHuP4hXfz3ol
+  qJDyP+9oqOghS6EgkBpuk91/OpqCGOfy13lsSWpOlWCyYA6/i8VQgChxxfsOmfA7
+  q8HIF8+F5ovvsBAoNAgndrPaq4poMOkMH4CwS/gBNgBoM5HonJP5FBy624ejSrUl
+  4FUH8ZrAYigRVHllb9dmVPI=
+  -----END CERTIFICATE-----
 
 # Secrets come from the controller's environment, which make loads from the uncommitted .env.
-cloudflare_api_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN', default=undef()) }}"
 cloudflare_tunnel_secret: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_SECRET', default=undef()) }}"
+internal_ca_key: "{{ lookup('ansible.builtin.env', 'INTERNAL_CA_KEY', default=undef()) }}"
 komodo_secrets:
   database_password: "{{ lookup('ansible.builtin.env', 'KOMODO_DATABASE_PASSWORD', default=undef()) }}"
   jwt_secret: "{{ lookup('ansible.builtin.env', 'KOMODO_JWT_SECRET', default=undef()) }}"
   init_admin_password: "{{ lookup('ansible.builtin.env', 'KOMODO_INIT_ADMIN_PASSWORD', default=undef()) }}"
   oidc_client_secret: "{{ lookup('ansible.builtin.env', 'KOMODO_OIDC_CLIENT_SECRET', default=undef()) }}"
+  onboarding_key: "{{ lookup('ansible.builtin.env', 'PERIPHERY_ONBOARDING_KEY', default=undef()) }}"
 backup_secrets:
-  restic_password: "{{ lookup('ansible.builtin.env', 'BACKUP_RESTIC_PASSWORD', default=undef()) }}"
+  restic_password: "{{ lookup('ansible.builtin.env', 'RESTIC_PASSWORD', default=undef()) }}"
+  # Prefixed because unprefixed AWS keys would override Terraform's credentials.
   aws_access_key_id: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_ACCESS_KEY_ID', default=undef()) }}"
   aws_secret_access_key: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_SECRET_ACCESS_KEY', default=undef()) }}"
-  role_arn: "{{ lookup('ansible.builtin.env', 'BACKUP_ROLE_ARN', default=undef()) }}"
-  ntfy_token: "{{ lookup('ansible.builtin.env', 'BACKUP_NTFY_TOKEN', default=undef()) }}"
+  role_arn: "{{ lookup('ansible.builtin.env', 'RESTIC_AWS_ASSUME_ROLE_ARN', default=undef()) }}"
+  ntfy_token: "{{ lookup('ansible.builtin.env', 'NTFY_TOKEN', default=undef()) }}"

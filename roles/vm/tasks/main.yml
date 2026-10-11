@@ -1,0 +1,72 @@
+---
+- name: Reserve the VM's address
+  community.libvirt.virt_net:
+    name: "{{ vm_definition.network }}"
+    command: modify
+    xml: <host mac="{{ vm_definition.mac }}" name="{{ inventory_hostname }}" ip="{{ vm_definition.address }}"/>
+  when: vm_definition.address is defined
+
+- name: Create the VM directory
+  ansible.builtin.file:
+    path: "{{ vm_directory }}"
+    state: directory
+    group: kvm
+    mode: "0770"
+
+- name: Create the VM disk on top of the base image
+  ansible.builtin.command:
+    argv: [qemu-img, create, -f, qcow2, -F, qcow2, -b, "{{ vm_storage }}/images/{{ vm_base_image }}", "{{ vm_directory }}/{{ inventory_hostname }}.qcow2", "{{ vm_definition.disk_gb }}G"]
+    creates: "{{ vm_directory }}/{{ inventory_hostname }}.qcow2"
+
+- name: Write the cloud-init seed
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ vm_directory }}/{{ item }}"
+    group: kvm
+    mode: "0640"
+  loop: [user-data, meta-data, network-config]
+
+# cloud-init reads the seed only on first boot, so it is never rebuilt.
+- name: Build the cloud-init seed ISO
+  ansible.builtin.command:
+    argv: [genisoimage, -output, seed.iso, -volid, cidata, -joliet, -rock, user-data, meta-data, network-config]
+    chdir: "{{ vm_directory }}"
+    creates: "{{ vm_directory }}/seed.iso"
+
+- name: List defined VMs
+  community.libvirt.virt:
+    command: list_vms
+  register: defined_vms
+  check_mode: false
+
+- name: Define and boot the VM
+  ansible.builtin.command:
+    argv:
+      - virt-install
+      - --name={{ inventory_hostname }}
+      - --memory={{ vm_definition.memory_mb }}
+      - --vcpus={{ vm_definition.vcpus }}
+      - --cpu=host-passthrough
+      - --os-variant=generic
+      - --import
+      - --disk=path={{ vm_directory }}/{{ inventory_hostname }}.qcow2,bus=virtio,format=qcow2
+      - --disk=path={{ vm_directory }}/seed.iso,device=cdrom
+      - --channel=unix,target_type=virtio,name=org.qemu.guest_agent.0
+      - --network=network={{ vm_definition.network }},model=virtio,mac={{ vm_definition.mac }}
+      - --graphics=none
+      - --console=pty,target_type=serial
+      - --noautoconsole
+  when: inventory_hostname not in defined_vms.list_vms
+
+- name: Keep the VM running and start it at boot
+  community.libvirt.virt:
+    name: "{{ inventory_hostname }}"
+    state: running
+    autostart: true
+
+- name: Wait for SSH
+  ansible.builtin.wait_for:
+    host: "{{ vm_definition.address }}"
+    port: 22
+    timeout: 300
+  when: vm_definition.address is defined

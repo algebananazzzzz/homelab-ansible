@@ -1,0 +1,40 @@
+---
+- name: Add the Tailscale repository
+  ansible.builtin.deb822_repository:
+    name: tailscale
+    uris: https://pkgs.tailscale.com/stable/debian
+    suites: bookworm
+    components: main
+    signed_by: https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Start Tailscale
+  ansible.builtin.systemd_service:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Forward traffic for subnet routes and the exit node
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-tailscale.conf
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+
+- name: Read the advertised routes
+  ansible.builtin.command: tailscale debug prefs
+  register: tailscale_preferences
+  changed_when: false
+  check_mode: false
+
+# Tailscale records the exit node as the two default routes.
+- name: Advertise the VM networks and the exit node
+  ansible.builtin.command: tailscale set --advertise-routes=10.10.10.0/24,10.10.20.0/24,10.10.30.0/24 --advertise-exit-node
+  when: (tailscale_preferences.stdout | from_json).AdvertiseRoutes | sort != ['0.0.0.0/0', '10.10.10.0/24', '10.10.20.0/24', '10.10.30.0/24', '::/0']

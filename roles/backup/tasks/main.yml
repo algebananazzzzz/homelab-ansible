@@ -2,94 +2,61 @@
 - name: Install backup dependencies
   ansible.builtin.apt:
     name: "{{ ['bzip2', 'curl'] + (['sqlite3'] if backup_job == 'volumes' else []) }}"
-    state: present
     update_cache: true
-    cache_valid_time: 86400
-
-- name: Check the installed restic version
-  ansible.builtin.command: /usr/local/bin/restic version
-  register: backup_restic_installed
-  changed_when: false
-  failed_when: false
-  check_mode: false
+    cache_valid_time: 3600
 
 - name: Download restic
   ansible.builtin.get_url:
-    url: "https://github.com/restic/restic/releases/download/v{{ restic_version }}/restic_{{ restic_version }}_linux_amd64.bz2"
-    dest: "/usr/local/src/restic_{{ restic_version }}_linux_amd64.bz2"
-    checksum: "sha256:{{ restic_sha256 }}"
-    mode: "0644"
-  when: ("restic " ~ restic_version) not in backup_restic_installed.stdout
+    url: https://github.com/restic/restic/releases/download/v{{ restic_version }}/restic_{{ restic_version }}_linux_amd64.bz2
+    dest: /usr/local/src/
+    checksum: sha256:{{ restic_sha256 }}
+
+- name: Unpack restic
+  ansible.builtin.shell: bunzip2 -c /usr/local/src/restic_{{ restic_version }}_linux_amd64.bz2 > /usr/local/lib/restic-{{ restic_version }} && chmod 0755 /usr/local/lib/restic-{{ restic_version }}
+  args:
+    creates: /usr/local/lib/restic-{{ restic_version }}
 
 - name: Install restic
-  ansible.builtin.shell: >-
-    bunzip2 -c /usr/local/src/restic_{{ restic_version }}_linux_amd64.bz2 > /usr/local/bin/restic
-    && chmod 0755 /usr/local/bin/restic
-  when: ("restic " ~ restic_version) not in backup_restic_installed.stdout
-  changed_when: true
+  ansible.builtin.file:
+    src: /usr/local/lib/restic-{{ restic_version }}
+    dest: /usr/local/bin/restic
+    state: link
+    force: true
 
 - name: Create the restic config directory
   ansible.builtin.file:
     path: /etc/restic
     state: directory
-    owner: root
-    group: root
     mode: "0700"
 
 - name: Write the restic environment
   ansible.builtin.template:
     src: env.j2
     dest: /etc/restic/env
-    owner: root
-    group: root
     mode: "0600"
   no_log: true
 
-# Every host shares one repository, so only the first host initialises it.
-- name: Check for the restic repository
-  ansible.builtin.shell: set -a; . /etc/restic/env; /usr/local/bin/restic cat config
+- name: Initialise the shared restic repository
+  ansible.builtin.shell: set -a; . /etc/restic/env; restic cat config > /dev/null 2>&1 || { restic init > /dev/null && echo initialised; }
   register: backup_repository
-  changed_when: false
-  failed_when: false
+  changed_when: backup_repository.stdout == 'initialised'
   run_once: true
-  check_mode: false
-  no_log: true
 
-- name: Initialise the restic repository
-  ansible.builtin.shell: set -a; . /etc/restic/env; /usr/local/bin/restic init
-  run_once: true
-  when: backup_repository.rc != 0
-  changed_when: true
-
-- name: Install the failure notifier
+- name: Install the backup job and failure notifier
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
-    owner: root
-    group: root
     mode: "{{ item.mode }}"
   loop:
-    - { src: backup-notify, dest: /usr/local/bin/backup-notify, mode: "0755" }
-    - { src: backup-notify@.service, dest: /etc/systemd/system/backup-notify@.service, mode: "0644" }
-
-- name: Install the job script
-  ansible.builtin.copy:
-    src: "backup-{{ backup_job }}"
-    dest: "/usr/local/bin/backup-{{ backup_job }}"
-    owner: root
-    group: root
-    mode: "0755"
+    - { src: "backup-{{ backup_job }}", dest: /usr/local/bin/, mode: "0755" }
+    - { src: backup-notify, dest: /usr/local/bin/, mode: "0755" }
+    - { src: backup-notify@.service, dest: /etc/systemd/system/, mode: "0644" }
 
 - name: Install the backup service and timer
   ansible.builtin.template:
     src: "{{ item }}.j2"
-    dest: "/etc/systemd/system/{{ item }}"
-    owner: root
-    group: root
-    mode: "0644"
-  loop:
-    - backup.service
-    - backup.timer
+    dest: /etc/systemd/system/{{ item }}
+  loop: [backup.service, backup.timer]
 
 - name: Enable the backup timer
   ansible.builtin.systemd_service:

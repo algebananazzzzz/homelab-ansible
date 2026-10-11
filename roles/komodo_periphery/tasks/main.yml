@@ -1,0 +1,22 @@
+---
+- name: Create the Periphery directory
+  ansible.builtin.file:
+    path: "{{ compose_root }}/komodo-periphery"
+    state: directory
+
+- name: Write the Periphery stack
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ compose_root }}/komodo-periphery/compose.yml"
+
+- name: Write the onboarding key
+  ansible.builtin.copy:
+    content: PERIPHERY_ONBOARDING_KEY={{ komodo_secrets.onboarding_key }}
+    dest: "{{ compose_root }}/komodo-periphery/.env"
+    mode: "0600"
+  no_log: true
+
+- name: Start Periphery
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/komodo-periphery"
+    wait: true

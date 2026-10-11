@@ -1,0 +1,6 @@
+---
+- name: Trust the internal CA
+  ansible.builtin.copy:
+    content: "{{ internal_ca_certificate }}"
+    dest: /usr/local/share/ca-certificates/homelab-ca.crt
+  notify: Update CA certificates

@@ -1,0 +1,3 @@
+---
+- name: Reconfigure ens3
+  ansible.builtin.shell: networkctl reload && networkctl reconfigure ens3

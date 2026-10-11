@@ -1,7 +1,0 @@
----
-# The home LAN only until mgmt-01 advertises its subnet routes.
-ansible_host: "{{ '192.168.50.39' if vm_via_hypervisor | default(false) | bool else '10.10.10.1' }}"
-ansible_port: 2222
-hostname: DXP4800PRO-F0EE
-storage_root: /volume1/@kvm/homelab
-backup_job: lab-vms

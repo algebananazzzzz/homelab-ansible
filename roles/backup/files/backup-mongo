@@ -1,5 +1,4 @@
 #!/bin/bash
-# Komodo variables hold every app's secrets and exist nowhere else.
 set -euo pipefail
 out=/var/backups/mongo
 rm -rf "$out"

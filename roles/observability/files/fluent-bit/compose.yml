@@ -1,0 +1,16 @@
+name: fluent-bit
+
+services:
+  fluent-bit:
+    container_name: fluent-bit
+    image: fluent/fluent-bit:5.1.3
+    entrypoint: ["/fluent-bit/bin/fluent-bit"]
+    command: ["-c", "/fluent-bit/etc/fluent-bit.yaml"]
+    network_mode: host
+    volumes:
+      - ./fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
+      - ./level.lua:/fluent-bit/etc/level.lua:ro
+      - /var/lib/fluent-bit:/fluent-bit/state
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    restart: unless-stopped

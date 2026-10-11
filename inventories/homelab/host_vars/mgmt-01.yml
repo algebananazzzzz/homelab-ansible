@@ -1,0 +1,12 @@
+---
+vm_definition:
+  name: mgmt-01
+  network: br-mgmt
+  mac: '52:54:00:10:00:10'
+  address: 10.10.10.10
+  memory_mb: 3072
+  vcpus: 2
+  disk_gb: 20
+backup_job: mongo
+consul_host_services:
+  - { name: komodo, port: 9120, hostnames: [komodo.ops.home.arpa], health_path: /version }

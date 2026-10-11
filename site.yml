@@ -1,0 +1,78 @@
+---
+- name: Hypervisor
+  hosts: hv-01
+  tags: hypervisor
+  roles:
+    - hypervisor
+    - node_exporter
+
+- name: VMs
+  hosts: vm:lab
+  tags: vms
+  roles:
+    - role: vm
+      delegate_to: hv-01
+
+# The other VMs resolve through Pi-hole.
+- name: Pi-hole
+  hosts: mgmt-01
+  tags: pihole
+  roles:
+    - guest
+    - pihole
+
+- name: Guests
+  hosts: vm:!mgmt-01
+  tags: guest
+  roles:
+    - guest
+
+- name: Consul
+  hosts: vm
+  tags: consul
+  roles:
+    - consul
+
+- name: Edge
+  hosts: svc-proxy-01
+  tags: edge
+  roles:
+    - traefik
+    - cloudflared
+
+- name: Management
+  hosts: mgmt-01
+  tags: mgmt
+  roles:
+    - tailscale
+    - komodo_core
+
+- name: VM agents
+  hosts: vm
+  tags: agents
+  roles:
+    - ca_trust
+    - observability
+    - node_exporter
+
+- name: Komodo Periphery
+  hosts: mgmt-01,mgmt-obs-01,svc-db-01,svc-apps-01
+  tags: komodo
+  roles:
+    - komodo_periphery
+
+- name: Backup
+  hosts: backup
+  tags: backup
+  roles:
+    - backup
+
+# restic prune locks the whole repository, so one host runs it.
+- name: Backup prune
+  hosts: svc-db-01
+  tags: backup
+  tasks:
+    - name: Install the weekly prune
+      ansible.builtin.include_role:
+        name: backup
+        tasks_from: prune

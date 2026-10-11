@@ -1,0 +1,76 @@
+---
+- name: Install the libvirt module dependency
+  ansible.builtin.apt:
+    name: python3-lxml
+
+- name: Enable time synchronization
+  ansible.builtin.systemd_service:
+    name: systemd-timesyncd.service
+    enabled: true
+    state: started
+
+- name: Define the VM networks
+  community.libvirt.virt_net:
+    name: "{{ item.name }}"
+    command: define
+    xml: "{{ lookup('ansible.builtin.template', 'network.xml.j2') }}"
+  loop: "{{ networks }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Start the VM networks
+  community.libvirt.virt_net:
+    name: "{{ item.name }}"
+    state: active
+  loop: "{{ networks }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Start the VM networks at boot
+  community.libvirt.virt_net:
+    name: "{{ item.name }}"
+    autostart: true
+  loop: "{{ networks }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Route between the VM networks and the uplink
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_file: /etc/sysctl.d/90-homelab-router.conf
+
+- name: Install the NAT and lab isolation rules
+  ansible.builtin.copy:
+    src: homelab-router.nft
+    dest: /etc/nftables.d/
+    validate: /usr/sbin/nft -c -f %s
+  notify: Restart homelab-router
+
+- name: Install the service that loads them
+  ansible.builtin.copy:
+    src: homelab-router.service
+    dest: /etc/systemd/system/
+  notify: Restart homelab-router
+
+- name: Enable the NAT and lab isolation rules
+  ansible.builtin.systemd_service:
+    name: homelab-router.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Create the image directory
+  ansible.builtin.file:
+    path: "{{ vm_storage }}/images"
+    state: directory
+    group: kvm
+    mode: "0755"
+
+- name: Download the Debian cloud image
+  ansible.builtin.get_url:
+    url: https://cloud.debian.org/images/cloud/bookworm/20260909-2596/{{ vm_base_image }}
+    dest: "{{ vm_storage }}/images/{{ vm_base_image }}"
+    checksum: sha512:08fea112563461f251f3c95a5c5cf8cb25eb60f74cec03e85a97ff91d3efef3059d35837598bbb476008f20db6d3bdc7143c5f2f2a9a6da394a0acc601fd5986
+    group: kvm
+    mode: "0644"

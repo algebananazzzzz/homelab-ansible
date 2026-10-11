@@ -1,0 +1,28 @@
+---
+- name: Write the cAdvisor stack
+  ansible.builtin.copy:
+    src: cadvisor/
+    dest: "{{ compose_root }}/cadvisor/"
+
+- name: Start cAdvisor
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/cadvisor"
+    wait: true
+
+- name: Write the Fluent Bit stack
+  ansible.builtin.copy:
+    src: fluent-bit/
+    dest: "{{ compose_root }}/fluent-bit/"
+  register: fluent_bit_stack
+
+- name: Write the Fluent Bit pipeline
+  ansible.builtin.template:
+    src: fluent-bit.yaml.j2
+    dest: "{{ compose_root }}/fluent-bit/fluent-bit.yaml"
+  register: fluent_bit_pipeline
+
+- name: Start Fluent Bit
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/fluent-bit"
+    wait: true
+    recreate: "{{ 'always' if fluent_bit_stack.changed or fluent_bit_pipeline.changed else 'auto' }}"

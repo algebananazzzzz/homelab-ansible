@@ -1,0 +1,7 @@
+{
+  "log-driver": "journald",
+  "log-opts": {
+    "tag": "{{.Name}}",
+    "labels": "com.docker.compose.project,com.docker.compose.service"
+  }
+}

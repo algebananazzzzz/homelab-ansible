@@ -1,0 +1,5 @@
+---
+- name: Trust the internal CA on this workstation
+  hosts: local
+  roles:
+    - ca_trust

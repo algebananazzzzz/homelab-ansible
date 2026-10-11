@@ -1,0 +1,35 @@
+---
+- name: Write the Pi-hole stack
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/pihole/"
+
+- name: Write the local DNS records
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: "{{ compose_root }}/pihole/dnsmasq.conf"
+  register: pihole_records
+
+- name: Start Pi-hole
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/pihole"
+    wait: true
+    # dnsmasq reads its configuration only at startup.
+    recreate: "{{ 'always' if pihole_records.changed else 'auto' }}"
+
+# DHCP hands mgmt-01 a public resolver, since Pi-hole doesn't exist when it first boots.
+- name: Resolve through this host's Pi-hole
+  ansible.builtin.copy:
+    dest: /etc/systemd/network/10-homelab.network
+    content: |
+      [Match]
+      Name=ens3
+
+      [Network]
+      DHCP=ipv4
+      DNS=10.10.10.10
+      Domains=~.
+
+      [DHCPv4]
+      UseDNS=false
+  notify: Reconfigure ens3

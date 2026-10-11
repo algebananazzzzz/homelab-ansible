@@ -1,0 +1,45 @@
+---
+- name: Add the Docker repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    uris: https://download.docker.com/linux/debian
+    suites: bookworm
+    components: stable
+    signed_by: https://download.docker.com/linux/debian/gpg
+
+- name: Install guest packages and Docker
+  ansible.builtin.apt:
+    name:
+      - git
+      - qemu-guest-agent
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Start the QEMU guest agent and Docker
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: [qemu-guest-agent, docker]
+
+- name: Configure journald
+  ansible.builtin.copy:
+    src: homelab.conf
+    dest: /etc/systemd/journald.conf.d/
+  notify: Restart journald
+
+# Containers keep the driver they were created with, so a change here needs every container recreated.
+- name: Send container logs to journald
+  ansible.builtin.copy:
+    src: daemon.json
+    dest: /etc/docker/daemon.json
+  notify: Restart Docker
+
+# Containers created later in this play must start with the journald driver.
+- name: Apply journald and Docker changes now
+  ansible.builtin.meta: flush_handlers

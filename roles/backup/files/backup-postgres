@@ -1,5 +1,4 @@
 #!/bin/bash
-# One dump per database, so one app can be rolled back without losing other apps' writes (see the spec's Renovate case).
 set -euo pipefail
 out=/var/backups/postgres
 rm -rf "$out"

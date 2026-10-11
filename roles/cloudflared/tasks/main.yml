@@ -1,0 +1,28 @@
+---
+- name: Write the cloudflared stack
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ compose_root }}/cloudflared/"
+  loop: [compose.yml, config.yml]
+  register: cloudflared_stack
+
+- name: Write the tunnel credentials and origin CA
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ compose_root }}/cloudflared/{{ item.file }}"
+    mode: "0600"
+  loop:
+    - file: credentials.json
+      content: "{{ {'AccountTag': '5ca1b03dd7b0c9421ee9b410e5e9238d', 'TunnelSecret': cloudflare_tunnel_secret, 'TunnelID': '9368815a-452c-4697-aff7-9d5940d6ee9a'} | to_json }}"
+    - file: ca.crt
+      content: "{{ internal_ca_certificate }}"
+  loop_control:
+    label: "{{ item.file }}"
+  register: cloudflared_secrets
+  no_log: true
+
+- name: Start cloudflared
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/cloudflared"
+    wait: true
+    recreate: "{{ 'always' if cloudflared_stack.changed or cloudflared_secrets.changed else 'auto' }}"

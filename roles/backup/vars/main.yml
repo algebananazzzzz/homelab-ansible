@@ -7,6 +7,5 @@ restic_repository: s3:s3.ap-southeast-1.amazonaws.com/{{ backup_bucket }}/restic
 backup_schedules:
   postgres: hourly
   volumes: hourly
-  # Komodo variables change only when an app or secret is added, and lab VMs are disposable.
   mongo: "*-*-* 00:00:00 Asia/Singapore"
   lab-vms: "*-*-* 00:00:00 Asia/Singapore"

@@ -1,0 +1,12 @@
+---
+vm_definition:
+  name: svc-proxy-01
+  network: br-svc
+  mac: '52:54:00:20:00:10'
+  address: 10.10.20.10
+  memory_mb: 2048
+  vcpus: 2
+  disk_gb: 20
+consul_server: true
+consul_host_services:
+  - { name: traefik, port: 8082, metrics_path: /metrics }

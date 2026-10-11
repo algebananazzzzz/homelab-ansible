@@ -1,0 +1,68 @@
+---
+- name: Write the Komodo stack
+  ansible.builtin.copy:
+    src: compose.yml
+    dest: "{{ compose_root }}/komodo/"
+
+- name: Write the Komodo secrets
+  ansible.builtin.copy:
+    content: |
+      KOMODO_DATABASE_PASSWORD={{ komodo_secrets.database_password }}
+      KOMODO_JWT_SECRET={{ komodo_secrets.jwt_secret }}
+      KOMODO_INIT_ADMIN_PASSWORD={{ komodo_secrets.init_admin_password }}
+      KOMODO_OIDC_CLIENT_SECRET={{ komodo_secrets.oidc_client_secret }}
+    dest: "{{ compose_root }}/komodo/.env"
+    mode: "0600"
+  no_log: true
+
+- name: Start Komodo Core
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_root }}/komodo"
+    wait: true
+
+- name: Log in to Komodo Core
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/auth/login/LoginLocalUser
+    method: POST
+    body_format: json
+    body:
+      username: admin
+      password: "{{ komodo_secrets.init_admin_password }}"
+  register: komodo_login
+  until: komodo_login.status == 200
+  retries: 30
+  delay: 2
+  check_mode: false
+  no_log: true
+
+- name: List Resource Syncs
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/read/ListResourceSyncs
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body: {}
+  register: komodo_syncs
+  check_mode: false
+  no_log: true
+
+- name: Create the app layer Resource Sync
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9120/write/CreateResourceSync
+    method: POST
+    headers:
+      authorization: "{{ komodo_login.json.data.jwt }}"
+    body_format: json
+    body:
+      name: homelab-komodo
+      config:
+        git_provider: github.com
+        repo: algebananazzzzz/homelab-komodo
+        branch: main
+        resource_path: [komodo]
+        managed: false
+        delete: false
+  when: komodo_syncs.json | selectattr('name', 'equalto', 'homelab-komodo') | length == 0
+  changed_when: true
+  no_log: true
