@@ -15,12 +15,15 @@ if [ "$SERVICE_RESULT" = success ]; then
   duration=$(( (exited - started) / 1000000 ))
 else
   success=0
-  last_success=$(sed -n 's/^backup_last_success_timestamp_seconds{.*} //p' "$file")
-  duration=$(sed -n 's/^backup_last_success_duration_seconds{.*} //p' "$file")
-  if [ -z "$last_success" ] || [ -z "$duration" ]; then
-    echo "$file has no previous success to keep" >&2
-    exit 1
+  last_success=
+  duration=
+  if [ -f "$file" ]; then
+    last_success=$(sed -n 's/^backup_last_success_timestamp_seconds{.*} //p' "$file")
+    duration=$(sed -n 's/^backup_last_success_duration_seconds{.*} //p' "$file")
   fi
+  # With no previous success to carry over, 0 makes BackupStale fire instead of the job vanishing from Prometheus.
+  last_success=${last_success:-0}
+  duration=${duration:-0}
 fi
 
 # The temporary name lacks the .prom suffix, so node_exporter never reads a half-written file.
