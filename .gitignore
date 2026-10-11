@@ -6,3 +6,8 @@ vault-password*
 .obsidian/
 .env
 docs/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup

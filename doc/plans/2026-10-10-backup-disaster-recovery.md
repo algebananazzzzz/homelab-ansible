@@ -50,24 +50,18 @@ This task needs the user: it creates AWS resources on their account and moves se
 Run: `cd A && .venv/bin/sops -d --extract '["backup_secrets"]' inventories/homelab/group_vars/all.sops.yml`
 Expected: an error that the key is not found.
 
-- [ ] **Step 2 (user): Create the bucket and IAM user**
+- [ ] **Step 2 (user): Create the bucket and IAM user with Terraform**
+
+Needs `algebananazzzzz/terraform-modules` tag `v0.0.3` (the `iam_policy` data source fix) and the state bucket `com-infra-tfstate-aws-algebananazzzzz` in `ap-southeast-1`.
 
 ```bash
-aws s3api create-bucket --bucket lab-com-s3-homelab-backup --region ap-southeast-1 \
-  --create-bucket-configuration LocationConstraint=ap-southeast-1
-aws s3api put-public-access-block --bucket lab-com-s3-homelab-backup \
-  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-aws iam create-user --user-name homelab-backup
-aws iam put-user-policy --user-name homelab-backup --policy-name homelab-backup --policy-document '{
-  "Version": "2012-10-17",
-  "Statement": [
-    {"Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation"], "Resource": "arn:aws:s3:::lab-com-s3-homelab-backup"},
-    {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], "Resource": "arn:aws:s3:::lab-com-s3-homelab-backup/*"}
-  ]
-}'
+cd ~/github.com/algebananazzzzz/homelab/homelab-ansible/infra
+terraform init -backend-config=config/lab.tfbackend
+terraform plan -out=backup.tfplan
+terraform apply backup.tfplan
 ```
 
-Expected: each command prints JSON or nothing, with no error.
+Expected: the plan creates 7 resources (bucket, public access block, versioning, lifecycle, IAM user, IAM policy, policy attachment), and the outputs show `backup_bucket = "lab-com-s3-homelab-backup"` and `backup_user = "lab-com-iamuser-homelab-backup"`.
 
 - [ ] **Step 3 (user): Generate the secrets straight into sops**
 
@@ -75,7 +69,7 @@ The access key and passwords go from `aws` and `openssl` into sops through a pip
 
 ```bash
 cd ~/github.com/algebananazzzzz/homelab/homelab-ansible
-aws iam create-access-key --user-name homelab-backup \
+aws iam create-access-key --user-name lab-com-iamuser-homelab-backup \
   | jq --arg pw "$(openssl rand -base64 32)" \
        --arg tok "tk_$(tr -dc 'a-z0-9' </dev/urandom | head -c 29)" \
        '{restic_password: $pw, aws_access_key_id: .AccessKey.AccessKeyId, aws_secret_access_key: .AccessKey.SecretAccessKey, ntfy_token: $tok}' \

@@ -24,8 +24,9 @@ Nothing is backed up today. Komodo variables (every app's database password, sec
 
 | Setting | Value |
 |---|---|
-| Bucket | `lab-com-s3-homelab-backup`, private, in `ap-southeast-1`, created by hand |
-| Access | an IAM user whose policy allows only that bucket, created by hand |
+| Bucket | `lab-com-s3-homelab-backup`, private, versioned (deleted objects recoverable for 30 days), in `ap-southeast-1` |
+| Access | IAM user `lab-com-iamuser-homelab-backup` with policy `lab-com-iampolicy-homelab-backup`, allowing only that bucket |
+| Code | `infra/` in homelab-ansible (Terraform, state in `com-infra-tfstate-aws-algebananazzzzz` at `lab/homelab/terraform.tfstate`); the policy uses the `iam_policy` module from `algebananazzzzz/terraform-modules` |
 | Repository | `s3:s3.ap-southeast-1.amazonaws.com/lab-com-s3-homelab-backup/restic` |
 
 New keys in `inventories/homelab/group_vars/all.sops.yml`:
@@ -35,7 +36,7 @@ New keys in `inventories/homelab/group_vars/all.sops.yml`:
 - `backup_secrets.aws_secret_access_key`
 - `backup_secrets.ntfy_token`: a publish-only ntfy token for the `homelab-backup` topic
 
-The age private key is the one secret that must live outside the lab, because it decrypts all of the above. It goes in the password manager, plus a printed copy. The Disaster Recovery page records how the bucket and IAM user were made.
+The access key is created outside Terraform and piped straight into sops, so its secret never lands in Terraform state. The age private key is the one secret that must live outside the lab, because it decrypts all of the above. It goes in the password manager, plus a printed copy.
 
 ## Ansible role `backup`
 
@@ -146,7 +147,7 @@ To check during implementation: the exact name of Komodo's variables collection,
 
 - WAL archiving and point-in-time recovery.
 - A second, local restic repository on hv-01's HDD volume.
-- Append-only or object-locked backups against an attacker who holds the backup credentials.
+- Object Lock. Versioning already keeps anything deleted with the backup key recoverable for 30 days.
 - Moving Komodo variables into sops.
 - Backing up Redis, Windmill logs and cache, metrics, logs, traces, Pi-hole, or Consul state. Ansible or the apps recreate all of these.
 - An alert for a backup that has gone stale, which belongs to the observability platform.
