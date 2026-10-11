@@ -6,6 +6,8 @@ vault-password*
 .obsidian/
 .env
 docs/
+doc/plans/
+doc/specs/
 
 # Terraform
 infra/.terraform/
