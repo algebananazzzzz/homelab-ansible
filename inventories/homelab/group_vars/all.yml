@@ -16,3 +16,18 @@ cloudflare:
   tunnel_name: homelab
   api_token: "{{ cloudflare_api_token }}"
   tunnel_secret: "{{ cloudflare_tunnel_secret }}"
+
+# Secrets come from the controller's environment, which make loads from the uncommitted .env.
+cloudflare_api_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_API_TOKEN', default=undef()) }}"
+cloudflare_tunnel_secret: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_SECRET', default=undef()) }}"
+komodo_secrets:
+  database_password: "{{ lookup('ansible.builtin.env', 'KOMODO_DATABASE_PASSWORD', default=undef()) }}"
+  jwt_secret: "{{ lookup('ansible.builtin.env', 'KOMODO_JWT_SECRET', default=undef()) }}"
+  init_admin_password: "{{ lookup('ansible.builtin.env', 'KOMODO_INIT_ADMIN_PASSWORD', default=undef()) }}"
+  oidc_client_secret: "{{ lookup('ansible.builtin.env', 'KOMODO_OIDC_CLIENT_SECRET', default=undef()) }}"
+backup_secrets:
+  restic_password: "{{ lookup('ansible.builtin.env', 'BACKUP_RESTIC_PASSWORD', default=undef()) }}"
+  aws_access_key_id: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_ACCESS_KEY_ID', default=undef()) }}"
+  aws_secret_access_key: "{{ lookup('ansible.builtin.env', 'BACKUP_AWS_SECRET_ACCESS_KEY', default=undef()) }}"
+  role_arn: "{{ lookup('ansible.builtin.env', 'BACKUP_ROLE_ARN', default=undef()) }}"
+  ntfy_token: "{{ lookup('ansible.builtin.env', 'BACKUP_NTFY_TOKEN', default=undef()) }}"

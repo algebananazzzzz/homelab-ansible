@@ -8,7 +8,7 @@ import {
   id = "2e91baca813ae4743fbd69429bb4a4f4/80c9849bb2549d322ded4de5c54f496a"
 }
 
-# The tunnel secret stays in Ansible's sops file, where cloudflared's credentials are built.
+# The tunnel secret stays in .env, where Ansible builds cloudflared's credentials from it.
 resource "cloudflare_zero_trust_tunnel_cloudflared" "homelab" {
   account_id = "5ca1b03dd7b0c9421ee9b410e5e9238d"
   name       = "homelab"

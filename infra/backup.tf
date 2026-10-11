@@ -39,7 +39,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
   }
 }
 
-# The key is created outside Terraform, straight into sops, so its secret never lands in state.
+# The key is created outside Terraform, straight into .env, so its secret never lands in state.
 resource "aws_iam_user" "backup" {
   name = "lab-com-iamuser-homelab-backup"
 }

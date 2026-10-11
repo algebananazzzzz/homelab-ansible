@@ -4,11 +4,11 @@ output "backup_bucket" {
 }
 
 output "backup_user" {
-  description = "Create its access key with the sops pipe on the Disaster Recovery page."
+  description = "Its access key goes into .env as BACKUP_AWS_ACCESS_KEY_ID and BACKUP_AWS_SECRET_ACCESS_KEY."
   value       = aws_iam_user.backup.name
 }
 
 output "backup_role_arn" {
-  description = "Goes into sops as backup_secrets.role_arn; restic assumes it with the user's key."
+  description = "Goes into .env as RESTIC_AWS_ASSUME_ROLE_ARN;restic assumes it with the user's key."
   value       = module.backup_role.role.arn
 }
