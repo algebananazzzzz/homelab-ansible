@@ -25,8 +25,8 @@ Nothing is backed up today. Komodo variables (every app's database password, sec
 | Setting | Value |
 |---|---|
 | Bucket | `lab-com-s3-homelab-backup`, private, versioned (deleted objects recoverable for 30 days), in `ap-southeast-1` |
-| Access | IAM user `lab-com-iamuser-homelab-backup` with policy `lab-com-iampolicy-homelab-backup`, allowing only that bucket |
-| Code | `infra/` in homelab-ansible (Terraform, state in `com-infra-tfstate-aws-algebananazzzzz` at `lab/homelab/terraform.tfstate`); the policy uses the `iam_policy` module from `algebananazzzzz/terraform-modules` |
+| Access | role `lab-com-iamrole-homelab-backup` (policy `lab-com-iampolicy-homelab-backup`, only that bucket), assumed by restic through `RESTIC_AWS_ASSUME_ROLE_ARN`; the hosts hold a key for IAM user `lab-com-iamuser-homelab-backup`, which may only assume that role |
+| Code | `infra/` in homelab-ansible (Terraform, state in `com-infra-tfstate-aws-algebananazzzzz` at `lab/homelab/terraform.tfstate`); the role uses the `iam_role` module from `algebananazzzzz/terraform-modules` |
 | Repository | `s3:s3.ap-southeast-1.amazonaws.com/lab-com-s3-homelab-backup/restic` |
 
 New keys in `inventories/homelab/group_vars/all.sops.yml`:
@@ -34,6 +34,7 @@ New keys in `inventories/homelab/group_vars/all.sops.yml`:
 - `backup_secrets.restic_password`
 - `backup_secrets.aws_access_key_id`
 - `backup_secrets.aws_secret_access_key`
+- `backup_secrets.role_arn`: the `backup_role_arn` Terraform output
 - `backup_secrets.ntfy_token`: a publish-only ntfy token for the `homelab-backup` topic
 
 The access key is created outside Terraform and piped straight into sops, so its secret never lands in Terraform state. The age private key is the one secret that must live outside the lab, because it decrypts all of the above. It goes in the password manager, plus a printed copy.

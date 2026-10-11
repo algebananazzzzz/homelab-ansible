@@ -41,31 +41,48 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
   }
 }
 
-# The access key is created outside Terraform, straight into sops, so its secret never lands in state.
+# The hosts' only standing credential: an access key that can do nothing but assume the backup role.
+# The key is created outside Terraform, straight into sops, so its secret never lands in state.
 resource "aws_iam_user" "backup" {
   name = "lab-com-iamuser-homelab-backup"
 }
 
-module "backup_policy" {
-  source = "github.com/algebananazzzzz/terraform-modules//iam_policy?ref=v0.0.3"
+resource "aws_iam_user_policy" "backup_assume_role" {
+  name = "lab-com-iampolicy-homelab-backup-assumerole"
+  user = aws_iam_user.backup.name
 
-  name        = "lab-com-iampolicy-homelab-backup"
-  description = "Lets the homelab hosts run restic against the backup bucket."
-  document_statements = {
-    ListBucket = {
-      effect    = "Allow"
-      actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
-      resources = [aws_s3_bucket.backup.arn]
-    }
-    ReadWriteObjects = {
-      effect    = "Allow"
-      actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-      resources = ["${aws_s3_bucket.backup.arn}/*"]
-    }
-  }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = module.backup_role.role.arn
+    }]
+  })
 }
 
-resource "aws_iam_user_policy_attachment" "backup" {
-  user       = aws_iam_user.backup.name
-  policy_arn = module.backup_policy.arn
+module "backup_role" {
+  source = "github.com/algebananazzzzz/terraform-modules//iam_role?ref=v0.0.2"
+
+  name = "lab-com-iamrole-homelab-backup"
+  assume_role_allowed_principals = [{
+    type        = "AWS"
+    identifiers = [aws_iam_user.backup.arn]
+  }]
+  custom_policy = {
+    name        = "lab-com-iampolicy-homelab-backup"
+    description = "Lets the homelab hosts run restic against the backup bucket."
+    statements = {
+      ListBucket = {
+        effect    = "Allow"
+        actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
+        resources = [aws_s3_bucket.backup.arn]
+      }
+      ReadWriteObjects = {
+        effect    = "Allow"
+        actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        resources = ["${aws_s3_bucket.backup.arn}/*"]
+      }
+    }
+  }
 }

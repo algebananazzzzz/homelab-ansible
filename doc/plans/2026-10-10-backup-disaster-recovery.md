@@ -52,7 +52,7 @@ Expected: an error that the key is not found.
 
 - [ ] **Step 2 (user): Create the bucket and IAM user with Terraform**
 
-Needs `algebananazzzzz/terraform-modules` tag `v0.0.3` (the `iam_policy` data source fix) and the state bucket `com-infra-tfstate-aws-algebananazzzzz` in `ap-southeast-1`.
+Needs the state bucket `com-infra-tfstate-aws-algebananazzzzz` in `ap-southeast-1`.
 
 ```bash
 cd ~/github.com/algebananazzzzz/homelab/homelab-ansible/infra
@@ -61,7 +61,7 @@ terraform plan -out=backup.tfplan
 terraform apply backup.tfplan
 ```
 
-Expected: the plan creates 7 resources (bucket, public access block, versioning, lifecycle, IAM user, IAM policy, policy attachment), and the outputs show `backup_bucket = "lab-com-s3-homelab-backup"` and `backup_user = "lab-com-iamuser-homelab-backup"`.
+Expected: the plan creates 9 resources (bucket, public access block, versioning, lifecycle, IAM user and its assume-role policy, role, role policy, policy attachment), and the outputs show `backup_bucket`, `backup_user`, and `backup_role_arn`.
 
 - [ ] **Step 3 (user): Generate the secrets straight into sops**
 
@@ -72,7 +72,8 @@ cd ~/github.com/algebananazzzzz/homelab/homelab-ansible
 aws iam create-access-key --user-name lab-com-iamuser-homelab-backup \
   | jq --arg pw "$(openssl rand -base64 32)" \
        --arg tok "tk_$(tr -dc 'a-z0-9' </dev/urandom | head -c 29)" \
-       '{restic_password: $pw, aws_access_key_id: .AccessKey.AccessKeyId, aws_secret_access_key: .AccessKey.SecretAccessKey, ntfy_token: $tok}' \
+       --arg role "$(terraform -chdir=infra output -raw backup_role_arn)" \
+       '{restic_password: $pw, aws_access_key_id: .AccessKey.AccessKeyId, aws_secret_access_key: .AccessKey.SecretAccessKey, role_arn: $role, ntfy_token: $tok}' \
   | .venv/bin/sops set --value-stdin inventories/homelab/group_vars/all.sops.yml '["backup_secrets"]'
 ```
 
@@ -83,7 +84,7 @@ Copy the age private key (`~/.config/sops/age/keys.txt` unless `SOPS_AGE_KEY_FIL
 - [ ] **Step 5: Verify the keys exist without printing values**
 
 Run: `.venv/bin/sops -d --extract '["backup_secrets"]' inventories/homelab/group_vars/all.sops.yml | python3 -c 'import sys,yaml; d=yaml.safe_load(sys.stdin); print(sorted(d), [len(str(v)) for v in d.values()])'`
-Expected: `['aws_access_key_id', 'aws_secret_access_key', 'ntfy_token', 'restic_password']` and four lengths above 0, with `ntfy_token` at 32.
+Expected: `['aws_access_key_id', 'aws_secret_access_key', 'ntfy_token', 'restic_password', 'role_arn']` and five lengths above 0, with `ntfy_token` at 32.
 
 - [ ] **Step 6: Commit**
 
