@@ -7,9 +7,9 @@
     group: root
     mode: "0755"
 
-- name: Install NAT rules
+- name: Install NAT and lab isolation rules
   ansible.builtin.template:
-    src: nat.nft.j2
+    src: router.nft.j2
     dest: /etc/nftables.d/homelab-router.nft
     owner: root
     group: root

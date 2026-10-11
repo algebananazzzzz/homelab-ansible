@@ -4,3 +4,24 @@ table ip homelab_nat {
         ip saddr {{ internal_cidr }} oifname "{{ uplink_interface }}" masquerade
     }
 }
+
+# Lab VMs run code their owners control, so they get the internet and each other but nothing else at home.
+# Connections into the lab from other networks still work, because their replies are established traffic.
+table inet homelab_lab_isolation {
+    chain forward {
+        type filter hook forward priority filter; policy accept;
+        iifname "br-lab" ct state established,related accept
+        # br_netfilter passes bridged frames through this hook, so this keeps lab VMs talking to each other.
+        iifname "br-lab" oifname "br-lab" accept
+        iifname "br-lab" ip daddr { 10.0.0.0/8, 100.64.0.0/10, 172.16.0.0/12, 192.168.0.0/16 } drop
+        iifname "br-lab" meta nfproto ipv6 drop
+    }
+
+    # Covers every address of the hypervisor itself, including UGOS and the media apps.
+    chain input {
+        type filter hook input priority filter; policy accept;
+        iifname "br-lab" ct state established,related accept
+        iifname "br-lab" udp dport 67 accept
+        iifname "br-lab" drop
+    }
+}

@@ -17,7 +17,7 @@ networks:
     reservations: "{{ vms | selectattr('network', 'equalto', 'br-svc') | selectattr('address', 'defined') | list }}"
   - name: br-lab
     gateway: 10.10.30.1
-    dns_server: 10.10.10.10
+    dns_server: 8.8.8.8
     dhcp_start: 10.10.30.100
     dhcp_end: 10.10.30.199
     domain: lab.home.arpa

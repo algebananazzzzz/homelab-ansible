@@ -1,13 +1,17 @@
 [Unit]
-Description=Homelab VM routing and outbound NAT
+Description=Homelab VM routing, outbound NAT and lab isolation
 Wants=network-online.target
 After=network-online.target
+# Autostarted lab VMs must not boot before their isolation rules exist.
+Before=libvirtd.service
 
 [Service]
 Type=oneshot
 ExecStartPre=-/usr/sbin/nft delete table ip homelab_nat
+ExecStartPre=-/usr/sbin/nft delete table inet homelab_lab_isolation
 ExecStart=/usr/sbin/nft -f /etc/nftables.d/homelab-router.nft
 ExecStop=-/usr/sbin/nft delete table ip homelab_nat
+ExecStop=-/usr/sbin/nft delete table inet homelab_lab_isolation
 RemainAfterExit=yes
 
 [Install]
