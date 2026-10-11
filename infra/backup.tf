@@ -1,4 +1,3 @@
-# Off-site restic repository for the homelab backups. See the Disaster Recovery page in Outline.
 resource "aws_s3_bucket" "backup" {
   bucket = "lab-com-s3-homelab-backup"
 }
@@ -12,7 +11,6 @@ resource "aws_s3_bucket_public_access_block" "backup" {
   restrict_public_buckets = true
 }
 
-# A host holding the backup key can delete objects, because restic prunes; versioning keeps them recoverable for 30 days.
 resource "aws_s3_bucket_versioning" "backup" {
   bucket = aws_s3_bucket.backup.id
 
@@ -41,7 +39,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "backup" {
   }
 }
 
-# The hosts' only standing credential: an access key that can do nothing but assume the backup role.
 # The key is created outside Terraform, straight into sops, so its secret never lands in state.
 resource "aws_iam_user" "backup" {
   name = "lab-com-iamuser-homelab-backup"

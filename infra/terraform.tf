@@ -6,9 +6,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 
-  # State key comes from config/lab.tfbackend:
-  #   terraform init -backend-config=config/lab.tfbackend
   backend "s3" {}
 }

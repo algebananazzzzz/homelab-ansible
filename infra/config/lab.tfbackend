@@ -1,4 +1,3 @@
-# Key convention: <env>/<project-code>/terraform.tfstate
 bucket       = "com-infra-tfstate-aws-algebananazzzzz"
 key          = "lab/homelab/terraform.tfstate"
 region       = "ap-southeast-1"
