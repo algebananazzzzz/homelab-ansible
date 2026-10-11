@@ -24,9 +24,9 @@ Nothing is backed up today. Komodo variables (every app's database password, sec
 
 | Setting | Value |
 |---|---|
-| Bucket | `algebananazzzzz-homelab-backup`, private, in `ap-southeast-1`, created by hand |
+| Bucket | `lab-com-s3-homelab-backup`, private, in `ap-southeast-1`, created by hand |
 | Access | an IAM user whose policy allows only that bucket, created by hand |
-| Repository | `s3:s3.ap-southeast-1.amazonaws.com/algebananazzzzz-homelab-backup/restic` |
+| Repository | `s3:s3.ap-southeast-1.amazonaws.com/lab-com-s3-homelab-backup/restic` |
 
 New keys in `inventories/homelab/group_vars/all.sops.yml`:
 

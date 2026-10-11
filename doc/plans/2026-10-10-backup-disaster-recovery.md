@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Paths: `A/` means `~/github.com/algebananazzzzz/homelab/homelab-ansible/`, `K/` means `~/github.com/algebananazzzzz/homelab/homelab-komodo/`. Run Ansible from `A/` with `.venv/bin/ansible-playbook`, and ad-hoc commands with `.venv/bin/ansible <host> -b -m shell -a '...'`. Ad-hoc arguments are Jinja templates: wrap any `{{` in `{% raw %}...{% endraw %}`. Ad-hoc `shell` runs `/bin/sh` (dash), so ad-hoc commands use `set -eu`, never `pipefail`.
-- Bucket `algebananazzzzz-homelab-backup` in `ap-southeast-1`. Repository `s3:s3.ap-southeast-1.amazonaws.com/algebananazzzzz-homelab-backup/restic`.
+- Bucket `lab-com-s3-homelab-backup` in `ap-southeast-1`. Repository `s3:s3.ap-southeast-1.amazonaws.com/lab-com-s3-homelab-backup/restic`.
 - restic `0.19.1`, asset `restic_0.19.1_linux_amd64.bz2`, SHA-256 `f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c`.
 - Secrets live in `A/inventories/homelab/group_vars/all.sops.yml` under `backup_secrets`: `restic_password`, `aws_access_key_id`, `aws_secret_access_key`, `ntfy_token`. Secret values never appear in a command line, a commit, or an agent's output.
 - `/etc/restic/env` (root, `0600`) holds `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `NTFY_TOKEN`. To run restic by hand on a host: `sudo bash -c 'set -a; . /etc/restic/env; restic <args>'`.
@@ -53,16 +53,16 @@ Expected: an error that the key is not found.
 - [ ] **Step 2 (user): Create the bucket and IAM user**
 
 ```bash
-aws s3api create-bucket --bucket algebananazzzzz-homelab-backup --region ap-southeast-1 \
+aws s3api create-bucket --bucket lab-com-s3-homelab-backup --region ap-southeast-1 \
   --create-bucket-configuration LocationConstraint=ap-southeast-1
-aws s3api put-public-access-block --bucket algebananazzzzz-homelab-backup \
+aws s3api put-public-access-block --bucket lab-com-s3-homelab-backup \
   --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 aws iam create-user --user-name homelab-backup
 aws iam put-user-policy --user-name homelab-backup --policy-name homelab-backup --policy-document '{
   "Version": "2012-10-17",
   "Statement": [
-    {"Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation"], "Resource": "arn:aws:s3:::algebananazzzzz-homelab-backup"},
-    {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], "Resource": "arn:aws:s3:::algebananazzzzz-homelab-backup/*"}
+    {"Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation"], "Resource": "arn:aws:s3:::lab-com-s3-homelab-backup"},
+    {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], "Resource": "arn:aws:s3:::lab-com-s3-homelab-backup/*"}
   ]
 }'
 ```
@@ -255,7 +255,7 @@ Create `A/roles/backup/vars/main.yml`:
 ---
 restic_version: 0.19.1
 restic_sha256: f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c
-restic_repository: s3:s3.ap-southeast-1.amazonaws.com/algebananazzzzz-homelab-backup/restic
+restic_repository: s3:s3.ap-southeast-1.amazonaws.com/lab-com-s3-homelab-backup/restic
 
 backup_schedules:
   postgres: hourly
