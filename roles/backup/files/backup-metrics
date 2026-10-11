@@ -1,0 +1,44 @@
+#!/bin/bash
+# Runs as ExecStopPost, where systemd sets SERVICE_RESULT for the run that just ended.
+set -euo pipefail
+name=$1
+max_age=$2
+unit=$3
+file=/var/lib/prometheus/node-exporter/backup-$name.prom
+
+if [ "$SERVICE_RESULT" = success ]; then
+  success=1
+  last_success=$(date +%s)
+  # A unit that never ran, as when Ansible seeds the file, reports 0 for both.
+  started=$(systemctl show -P ExecMainStartTimestampMonotonic "$unit")
+  exited=$(systemctl show -P ExecMainExitTimestampMonotonic "$unit")
+  duration=$(( (exited - started) / 1000000 ))
+else
+  success=0
+  last_success=$(sed -n 's/^backup_last_success_timestamp_seconds{.*} //p' "$file")
+  duration=$(sed -n 's/^backup_last_success_duration_seconds{.*} //p' "$file")
+  if [ -z "$last_success" ] || [ -z "$duration" ]; then
+    echo "$file has no previous success to keep" >&2
+    exit 1
+  fi
+fi
+
+# The temporary name lacks the .prom suffix, so node_exporter never reads a half-written file.
+tmp=$(mktemp "$file.XXXXXX")
+cat > "$tmp" <<EOF
+# HELP backup_last_run_success Whether the last run of the backup succeeded.
+# TYPE backup_last_run_success gauge
+backup_last_run_success{backup="$name"} $success
+# HELP backup_last_success_timestamp_seconds When the backup last succeeded.
+# TYPE backup_last_success_timestamp_seconds gauge
+backup_last_success_timestamp_seconds{backup="$name"} $last_success
+# HELP backup_last_success_duration_seconds How long the last successful run took.
+# TYPE backup_last_success_duration_seconds gauge
+backup_last_success_duration_seconds{backup="$name"} $duration
+# HELP backup_max_age_seconds How old the last success may get before the backup counts as stale.
+# TYPE backup_max_age_seconds gauge
+backup_max_age_seconds{backup="$name"} $max_age
+EOF
+# mktemp creates 0600, and node_exporter reads as the prometheus user.
+chmod 0644 "$tmp"
+mv "$tmp" "$file"
