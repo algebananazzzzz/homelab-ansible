@@ -8,7 +8,8 @@ active_overlay=""
 # Runs on every exit, so a failed upload still merges the overlay back; otherwise the VM writes to it forever.
 merge_back() {
   if [ -n "$active_vm" ]; then
-    virsh blockcommit "$active_vm" vda --active --pivot --wait
+    # Without --shallow the commit runs down the whole chain into the shared base image every VM is built on.
+    virsh blockcommit "$active_vm" vda --active --shallow --pivot --wait
     rm -f "$active_overlay"
     active_vm=""
   fi
