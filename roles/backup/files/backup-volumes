@@ -4,9 +4,9 @@ copies=/var/backups/volumes
 rm -rf "$copies"
 mkdir -p -m 0700 "$copies"
 
-containers=$(docker ps -aq --filter label=homelab.backup=true)
+containers=$(docker ps -aq --filter label=homelab.backup-volumes=true)
 if [ -z "$containers" ]; then
-  echo "no container has the homelab.backup label" >&2
+  echo "no container has the homelab.backup-volumes label" >&2
   exit 1
 fi
 
