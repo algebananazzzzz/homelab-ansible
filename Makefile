@@ -26,7 +26,7 @@ check:
 	$(PLAYBOOK) --check --diff
 
 plan:
-	$(TERRAFORM) plan
+	$(TERRAFORM) plan -var-file=config/lab.tfvars
 
 apply:
-	$(TERRAFORM) apply
+	$(TERRAFORM) apply -var-file=config/lab.tfvars

@@ -1,10 +1,10 @@
 provider "aws" {
-  region = "ap-southeast-1"
+  region = var.aws_region
 
   default_tags {
     tags = {
-      Environment = "lab"
-      Project     = "homelab"
+      Environment = var.env
+      Project     = var.project_code
       ManagedBy   = "terraform"
     }
   }

@@ -10,6 +10,17 @@ doc/plans/
 doc/specs/
 
 # Terraform
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
