@@ -62,7 +62,9 @@
         branch: main
         resource_path: [komodo]
         managed: false
-        delete: false
+        delete: true
+        # Servers, Komodo's system procedures and this sync live outside the repo, so the tag keeps delete away from them.
+        match_tags: [homelab-komodo]
   when: komodo_syncs.json | selectattr('name', 'equalto', 'homelab-komodo') | length == 0
   changed_when: true
   no_log: true
