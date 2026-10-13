@@ -6,7 +6,6 @@
     suites: bookworm
     components: stable
     signed_by: https://download.docker.com/linux/debian/gpg
-  register: docker_repository
 
 - name: Install guest packages and Docker
   ansible.builtin.apt:
@@ -19,8 +18,6 @@
       - docker-buildx-plugin
       - docker-compose-plugin
     update_cache: true
-    # A fresh VM's empty package lists look current for an hour, which hides the repository just added.
-    cache_valid_time: "{{ 0 if docker_repository.changed else 3600 }}"
 
 - name: Start the QEMU guest agent and Docker
   ansible.builtin.systemd_service:
