@@ -1,0 +1,8 @@
+---
+vm_definition:
+  name: lab-heavyweights-01
+  network: br-lab
+  mac: '52:54:00:30:00:20'
+  memory_mb: 2048
+  vcpus: 2
+  disk_gb: 20
